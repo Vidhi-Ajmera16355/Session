@@ -305,8 +305,31 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
               <div style={s.qrContainer}>
                 <img src={qrCodeSrc} alt={`UPI QR Code for ₹${amount}`} style={s.qrImg} />
               </div>
+              
+              {/* Deep link button for mobile users */}
+              <a 
+                href={upiLink}
+                style={{
+                  display: 'inline-block',
+                  background: '#22c55e', // Green for payment action
+                  color: '#ffffff',
+                  textDecoration: 'none',
+                  padding: '12px 18px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  width: '100%',
+                  maxWidth: '240px',
+                  marginBottom: '12px',
+                  boxShadow: 'var(--shadow-sm)'
+                }}
+              >
+                ⚡ Pay via UPI App (Mobile)
+              </a>
+
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 12 }}>
-                Scan with GPay, PhonePe, Paytm, or BHIM
+                Scan the QR or click the button above to pay via GPay, PhonePe, Paytm, etc.
               </p>
             </div>
 
