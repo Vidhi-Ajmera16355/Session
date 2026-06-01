@@ -46,7 +46,7 @@ router.post('/register', registrationLimiter, async (req, res) => {
     const registration = new Registration({ name, phone, email, college, plan, amount, transactionId, goal });
     await registration.save();
 
-    // ── Send emails asynchronously (non-blocking) ──────────────────────
+    //  Send emails asynchronously (non-blocking)
     if (transporter) {
       const planLabel = plan === 'workshop' ? 'Group Workshop' : '1-on-1 Call';
 

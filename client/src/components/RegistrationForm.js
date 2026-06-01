@@ -27,11 +27,12 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError('');
     const { name, phone, email, college, transactionId } = form;
     if (!name || !phone || !email || !college || !transactionId) {
-      setError('Please fill in all required fields including the transaction ID.');
+      setError('Please fill in all required fields including the 12-digit transaction ID.');
       return;
     }
     setLoading(true);
@@ -50,7 +51,6 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       padding: '80px 0',
       background: 'var(--bg-secondary)',
       borderBottom: '1px solid var(--border)',
-      transition: 'background 0.3s, border-color 0.3s',
     },
     heading: {
       fontSize: 'clamp(24px, 4vw, 36px)',
@@ -78,7 +78,6 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       borderRadius: 'var(--radius-md)',
       padding: '32px 24px',
       boxShadow: 'var(--shadow-md)',
-      transition: 'all 0.3s ease',
     },
     payTitle: {
       fontWeight: 700,
@@ -88,6 +87,16 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       alignItems: 'center',
       gap: 8,
       color: 'var(--text-primary)',
+    },
+    alertBox: {
+      background: '#fffbeb',
+      border: '1px solid #fcd34d',
+      borderRadius: 'var(--radius-sm)',
+      padding: '16px',
+      marginBottom: '24px',
+      color: '#92400e',
+      fontSize: '14px',
+      lineHeight: '1.6',
     },
     qrContainer: {
       background: '#ffffff', // QR code requires white background for high contrast scanning
@@ -135,7 +144,8 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       padding: '12px 18px',
       fontSize: 13,
       fontWeight: 600,
-      transition: 'background 0.2s',
+      border: 'none',
+      cursor: 'pointer',
     },
     copyBtnCopied: {
       background: 'var(--accent)',
@@ -219,6 +229,8 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       fontSize: 15,
       fontWeight: 700,
       boxShadow: 'var(--shadow-md)',
+      border: 'none',
+      cursor: 'pointer',
     },
     submitBtnDisabled: {
       opacity: 0.6,
@@ -296,6 +308,11 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
         <div style={s.layout}>
           {/* LEFT — Payment Box */}
           <div style={s.card} className="fade-up-2">
+            
+            <div style={s.alertBox}>
+              <strong>⚠️ MANDATORY STEP:</strong> Your seat is NOT booked just by paying. You <strong>MUST</strong> fill out the form on the right and submit your Transaction ID/UTR to complete registration.
+            </div>
+
             <div style={s.payTitle}>
               <span>💳</span> Secure Payment via UPI
             </div>
@@ -336,6 +353,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
             <div style={s.upiRow}>
               <div style={s.upiBox}>{UPI_ID}</div>
               <button 
+                type="button"
                 style={{ ...s.copyBtn, ...(copied ? s.copyBtnCopied : {}) }} 
                 onClick={copyUPI}
               >
@@ -346,11 +364,11 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
             <div style={s.steps}>
               <div style={s.stepItem}>
                 <span style={s.stepNum}>1.</span>
-                <span>Scan QR or copy the UPI ID to send <strong>₹{amount}</strong>.</span>
+                <span>Scan QR or click the button to send <strong>₹{amount}</strong>.</span>
               </div>
               <div style={s.stepItem}>
                 <span style={s.stepNum}>2.</span>
-                <span>Complete the transfer and screenshot the receipt.</span>
+                <span>Complete the transfer and copy your 12-digit UTR.</span>
               </div>
               <div style={s.stepItem}>
                 <span style={s.stepNum}>3.</span>
@@ -358,7 +376,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
               </div>
               <div style={s.stepItem}>
                 <span style={s.stepNum}>4.</span>
-                <span>Submit to confirm your seat within 24 hours.</span>
+                <span>Click Submit Registration.</span>
               </div>
             </div>
           </div>
@@ -366,7 +384,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
           {/* RIGHT — Form Box */}
           <div style={s.card} className="fade-up-3">
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.3px', textTransform: 'uppercase', fontWeight: 600 }}>
-              Select Plan
+              Step 2: Submit Registration
             </div>
             <div style={s.planToggle}>
               {[
@@ -384,14 +402,14 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
               ))}
             </div>
 
-            <div style={s.formGrid}>
+            <form onSubmit={handleSubmit} style={s.formGrid}>
               <div style={s.field}>
                 <label style={s.label}>Full Name *</label>
                 <input name="name" value={form.name} onChange={handleChange} placeholder="e.g. John Doe" required />
               </div>
               <div style={s.field}>
                 <label style={s.label}>WhatsApp Number *</label>
-                <input name="phone" value={form.phone} onChange={handleChange} placeholder="e.g. +91 9876543210" required />
+                <input name="phone" value={form.phone} onChange={handleChange} placeholder="e.g. 9876543210" required />
               </div>
               <div style={s.fieldFull}>
                 <label style={s.label}>Email Address *</label>
@@ -403,25 +421,27 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
               </div>
               <div style={s.fieldFull}>
                 <label style={s.label}>Transaction ID / UTR number *</label>
-                <input name="transactionId" value={form.transactionId} onChange={handleChange} placeholder="12-digit UTR or Transaction Ref" required />
+                <input name="transactionId" value={form.transactionId} onChange={handleChange} placeholder="Required: 12-digit UTR or Transaction Ref" required />
               </div>
               <div style={s.fieldFull}>
                 <label style={s.label}>What do you want to learn? (optional)</label>
-                <textarea name="goal" value={form.goal} onChange={handleChange} placeholder="e.g. Resume tips, Goldman Sachs off-campus hiring process, etc." />
+                <textarea name="goal" value={form.goal} onChange={handleChange} placeholder="e.g. Resume tips, interview process, etc." />
               </div>
-            </div>
 
-            {error && <div style={s.errorMsg}>⚠ {error}</div>}
+              {error && <div style={{...s.fieldFull, ...s.errorMsg}}>⚠ {error}</div>}
 
-            <button
-              style={{ ...s.submitBtn, ...(loading ? s.submitBtnDisabled : {}) }}
-              onClick={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? 'Registering...' : `Submit Registration (₹${amount})`}
-            </button>
+              <div style={s.fieldFull}>
+                <button
+                  type="submit"
+                  style={{ ...s.submitBtn, ...(loading ? s.submitBtnDisabled : {}) }}
+                  disabled={loading}
+                >
+                  {loading ? 'Submitting...' : `Submit Registration (₹${amount})`}
+                </button>
+              </div>
+            </form>
 
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12, textAlign: 'center' }}>
+            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 16, textAlign: 'center' }}>
               Only serious learners. Verification takes up to 24 hours.
             </p>
           </div>
