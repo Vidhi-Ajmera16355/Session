@@ -1,6 +1,12 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 
 export default function Pricing({ onSelect }) {
+  const { user } = useAuth();
+
+  const hasWorkshop = user?.registrations?.some(r => r.plan === 'workshop');
+  const hasOneOnOne = user?.registrations?.some(r => r.plan === 'oneonone');
+
   const s = {
     section: {
       padding: '80px 0',
@@ -147,25 +153,33 @@ export default function Pricing({ onSelect }) {
             }}
           >
             <span style={s.featuredBadge}>Most Popular</span>
-            <div style={s.planLabel}>Group Workshop</div>
-            <div style={s.priceRow}>
-              <span style={s.price}>₹49</span>
+            <div style={{ ...s.planLabel, ...(hasWorkshop ? { textDecoration: 'underline', color: 'var(--primary)' } : {}) }}>
+              Group Workshop {hasWorkshop && '✓ (Purchased)'}
             </div>
-            <div style={s.priceNote}>Recorded Session</div>
+            <div style={s.priceRow}>
+              <span style={s.price}>₹59</span>
+            </div>
+            <div style={s.priceNote}>Lifetime Access (Recorded Session)</div>
             <div style={s.desc}>Completely confused about where to start? This session breaks down the roadmap to secure your first opportunity.</div>
             <ul style={s.perks}>
               {['My personal journey (started in 2nd year)', 'Roadmap to your first internship/job', 'Building a strong profile over time', 'Suitable even if you feel you have done nothing', 'Watch anytime at your own pace'].map((p, i) => (
                 <li key={i} style={s.perk}><span style={s.check}>✓</span>{p}</li>
               ))}
             </ul>
-            <button 
-              style={{ ...s.btn, ...s.btnPrimary }} 
-              onClick={() => onSelect('workshop')}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
-            >
-              Register for ₹49 →
-            </button>
+            {hasWorkshop ? (
+              <button style={{ ...s.btn, background: 'var(--accent)', color: '#fff', cursor: 'default' }}>
+                ✓ Already Purchased
+              </button>
+            ) : (
+              <button 
+                style={{ ...s.btn, ...s.btnPrimary }} 
+                onClick={() => onSelect('workshop')}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
+              >
+                Register for ₹59 →
+              </button>
+            )}
           </div>
 
           {/* 1-on-1 */}
@@ -181,25 +195,33 @@ export default function Pricing({ onSelect }) {
               e.currentTarget.style.borderColor = 'var(--border)';
             }}
           >
-            <div style={s.planLabel}>1-on-1 Call</div>
-            <div style={s.priceRow}>
-              <span style={s.price}>₹89</span>
+            <div style={{ ...s.planLabel, ...(hasOneOnOne ? { textDecoration: 'underline', color: 'var(--primary)' } : {}) }}>
+              1-on-1 Call {hasOneOnOne && '✓ (Purchased)'}
             </div>
-            <div style={s.priceNote}>Dedicated Slot</div>
-            <div style={s.desc}>Direct access to avoid common mistakes. Keep your notes handy; this discussion will be practical and tailored to your situation.</div>
+            <div style={s.priceRow}>
+              <span style={s.price}>₹159</span>
+            </div>
+            <div style={s.priceNote}>Only till 25 June (Limited to first 50 seats)</div>
+            <div style={s.desc}>Direct access to avoid common mistakes. Prices are kept minimal for serious individuals building their career. Keep your notes handy!</div>
             <ul style={s.perks}>
-              {['Personalized to your current situation', 'Available via Zoom, WhatsApp, or Phone', 'Direct access to guidance', 'Action-oriented and practical discussion', 'Book based on mutual availability'].map((p, i) => (
+              {['Personalized to your current situation', 'Detailed schedule & timing shared via Gmail', 'Session details available on the website', 'Choice of Google Meet or WhatsApp Call', 'Action-oriented and practical discussion'].map((p, i) => (
                 <li key={i} style={s.perk}><span style={{ ...s.check, color: 'var(--primary)' }}>✓</span>{p}</li>
               ))}
             </ul>
-            <button 
-              style={{ ...s.btn, ...s.btnOutline }} 
-              onClick={() => onSelect('oneonone')}
-              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >
-              Book 1-on-1 for ₹89 →
-            </button>
+            {hasOneOnOne ? (
+              <button style={{ ...s.btn, background: 'var(--accent)', color: '#fff', cursor: 'default', border: 'none' }}>
+                ✓ Already Purchased
+              </button>
+            ) : (
+              <button 
+                style={{ ...s.btn, ...s.btnOutline }} 
+                onClick={() => onSelect('oneonone')}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                Book 1-on-1 for ₹159 →
+              </button>
+            )}
           </div>
         </div>
       </div>

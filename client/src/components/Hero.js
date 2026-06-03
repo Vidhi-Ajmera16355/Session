@@ -125,7 +125,7 @@ export default function Hero({ onCTA }) {
             onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
           >
-            Join the Session — ₹49 →
+            Join the Session — ₹59 →
           </button>
           <button 
             style={s.btnSecondary} 
@@ -133,7 +133,7 @@ export default function Hero({ onCTA }) {
             onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
             onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
           >
-            Book 1-on-1 Call — ₹89
+            Book 1-on-1 Call — ₹159
           </button>
         </div>
         <div style={s.deadline} className="fade-up-4">

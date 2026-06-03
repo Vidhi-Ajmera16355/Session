@@ -367,8 +367,8 @@ export default function AdminPanel() {
           <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Filter by Plan</label>
           <select value={filterPlan} onChange={e => setFilterPlan(e.target.value)} style={s.select}>
             <option value="all">All Plans</option>
-            <option value="workshop">Group Workshop (₹49)</option>
-            <option value="oneonone">1-on-1 Call (₹89)</option>
+            <option value="workshop">Group Workshop (₹59)</option>
+            <option value="oneonone">1-on-1 Call (₹159)</option>
           </select>
         </div>
         <div style={s.filterGroup}>

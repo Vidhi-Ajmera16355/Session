@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const UPI_ID = '7668903828@pthdfc';
 const PAYEE_NAME = 'Vidhi Ajmera';
 
 export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
+  const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', phone: '', email: '', college: '', transactionId: '', goal: '' });
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const amount = selectedPlan === 'workshop' ? 49 : 89;
+  const amount = selectedPlan === 'workshop' ? 59 : 159;
 
   // Generate the deep-link UPI URI
   const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Registration for ${selectedPlan === 'workshop' ? 'Workshop' : '1-on-1 Call'}`)}`;
@@ -291,8 +293,25 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
             <p style={s.successSub}>
               Thank you, <strong>{form.name}</strong>. Your payment for the <strong>{selectedPlan === 'workshop' ? 'Group Workshop' : '1-on-1 Call'}</strong> is being verified.
               <br /><br />
-              We will confirm your seat via WhatsApp and Email within 24 hours. Keep your receipt handy!
+              <strong>Next Step:</strong> You must create a login account to access the session recording or schedule once verified.
             </p>
+            <button
+              onClick={() => navigate('/register')}
+              style={{
+                background: 'var(--primary)',
+                color: '#fff',
+                padding: '14px 28px',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '16px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                marginTop: '24px',
+                boxShadow: 'var(--shadow-md)',
+              }}
+            >
+              Create Login Account →
+            </button>
           </div>
         </div>
       </section>
@@ -388,8 +407,8 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
             </div>
             <div style={s.planToggle}>
               {[
-                { key: 'workshop', label: 'Group Workshop', price: '₹49' },
-                { key: 'oneonone', label: '1-on-1 Call', price: '₹89' }
+                { key: 'workshop', label: 'Group Workshop', price: '₹59' },
+                { key: 'oneonone', label: '1-on-1 Call', price: '₹159' }
               ].map(p => (
                 <div
                   key={p.key}
