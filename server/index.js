@@ -16,9 +16,17 @@ const PORT = process.env.PORT || 5000;
 // Enable response compression for performance
 app.use(compression());
 
-// CORS — allow credentials (cookies) from the React dev server
+// CORS — allow credentials (cookies) from local React dev server and deployed frontend
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://securejob-rho.vercel.app',
+];
+if (process.env.CLIENT_URL) {
+  allowedOrigins.push(...process.env.CLIENT_URL.split(',').map(o => o.trim()));
+}
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  origin: allowedOrigins,
   credentials: true,
 }));
 

@@ -119,7 +119,7 @@ https://railway.app — deploy both client and server from one GitHub repo
 |---|---|
 | Your UPI ID | `client/src/components/RegistrationForm.js` → `UPI_ID` |
 | Your QR image | Upload at runtime OR put `qr.png` in `client/public/` |
-| Workshop price | Already set to ₹49 / ₹89 in Pricing.js and routes/registration.js |
+| Workshop price | Already set to ₹59 / ₹159 in Pricing.js and routes/registration.js |
 | Deadlines | `client/src/components/Hero.js` |
 | Your name / branding | `client/src/components/Footer.js` |
 | Session topics | `client/src/components/WhatYouGet.js` |
