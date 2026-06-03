@@ -4,6 +4,7 @@ const cors = require('cors');
 const dns = require('dns');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 // Resolve MongoDB DNS SRV issue by using Google's DNS servers
@@ -15,8 +16,15 @@ const PORT = process.env.PORT || 5000;
 // Enable response compression for performance
 app.use(compression());
 
-app.use(cors());
+// CORS — allow credentials (cookies) from the React dev server
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:3000',
+  credentials: true,
+}));
+
+// Parse JSON bodies and cookies
 app.use(express.json());
+app.use(cookieParser());
 
 // Apply rate limiting to all API endpoints to prevent abuse/DDoS
 const apiLimiter = rateLimit({
@@ -30,6 +38,9 @@ app.use('/api', apiLimiter);
 
 // Routes
 app.use('/api', require('./routes/registration'));
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/session', require('./routes/session'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Health check
 app.get('/', (req, res) => res.json({ status: 'Server is running ✓' }));
@@ -47,4 +58,3 @@ mongoose.connect(process.env.MONGODB_URI, {
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
-  

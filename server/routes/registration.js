@@ -35,7 +35,7 @@ router.post('/register', registrationLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: 'All required fields must be filled.' });
     }
 
-    const amount = plan === 'workshop' ? 49 : 89;
+    const amount = plan === 'workshop' ? 59 : 159;
 
     // Check for duplicate transaction ID (now O(1) due to database index)
     const existing = await Registration.findOne({ transactionId });
@@ -142,6 +142,29 @@ router.patch('/registrations/:id/status', authAdmin, async (req, res) => {
     }
     const reg = await Registration.findByIdAndUpdate(req.params.id, { status }, { new: true });
     if (!reg) return res.status(404).json({ success: false, message: 'Registration not found.' });
+
+    // Sync with User access
+    const User = require('../models/User');
+    if (status === 'confirmed') {
+      await User.findOneAndUpdate(
+        { email: reg.email.toLowerCase() },
+        { access: true }
+      );
+    } else {
+      // If setting to pending or rejected, check if there are any other confirmed registrations for this email
+      const otherConfirmed = await Registration.findOne({
+        email: reg.email.toLowerCase(),
+        status: 'confirmed',
+        _id: { $ne: reg._id }
+      });
+      if (!otherConfirmed) {
+        await User.findOneAndUpdate(
+          { email: reg.email.toLowerCase() },
+          { access: false }
+        );
+      }
+    }
+
     res.json({ success: true, data: reg });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error.' });
