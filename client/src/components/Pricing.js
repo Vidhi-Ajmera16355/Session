@@ -157,7 +157,7 @@ export default function Pricing({ onSelect }) {
               Group Workshop {hasWorkshop && '✓ (Purchased)'}
             </div>
             <div style={s.priceRow}>
-              <span style={s.price}>₹59</span>
+              <span style={s.price}>₹1</span>
             </div>
             <div style={s.priceNote}>Lifetime Access (Recorded Session) · <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Only till 29 June</span></div>
             <div style={s.desc}>Completely confused about where to start? This session breaks down the roadmap to secure your first opportunity.</div>
@@ -177,7 +177,7 @@ export default function Pricing({ onSelect }) {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
               >
-                Register for ₹59 →
+                Register for ₹1 →
               </button>
             )}
           </div>

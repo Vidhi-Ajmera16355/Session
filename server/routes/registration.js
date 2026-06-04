@@ -35,7 +35,7 @@ router.post('/register', registrationLimiter, async (req, res) => {
       return res.status(400).json({ success: false, message: 'All required fields must be filled.' });
     }
 
-    const amount = plan === 'workshop' ? 59 : 159;
+    const amount = plan === 'workshop' ? 1 : 159;
 
     // Check for duplicate transaction ID (now O(1) due to database index)
     const existing = await Registration.findOne({ transactionId });

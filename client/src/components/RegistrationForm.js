@@ -13,7 +13,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
 
-  const amount = selectedPlan === 'workshop' ? 59 : 159;
+  const amount = selectedPlan === 'workshop' ? 1 : 159;
 
   // Generate the deep-link UPI URI
   const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Registration for ${selectedPlan === 'workshop' ? 'Workshop' : '1-on-1 Call'}`)}`;
@@ -407,7 +407,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
             </div>
             <div style={s.planToggle}>
               {[
-                { key: 'workshop', label: 'Group Workshop', price: '₹59' },
+                { key: 'workshop', label: 'Group Workshop', price: '₹1' },
                 { key: 'oneonone', label: '1-on-1 Call', price: '₹159' }
               ].map(p => (
                 <div
