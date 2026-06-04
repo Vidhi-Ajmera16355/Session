@@ -65,7 +65,7 @@ exports.register = async (req, res) => {
     const confirmedReg = await Registration.findOne({
       email: email.toLowerCase(),
       status: 'confirmed',
-    });
+    }).select('_id').lean();
 
     // Create user (password is hashed by pre-save hook)
     const user = new User({
@@ -80,8 +80,8 @@ exports.register = async (req, res) => {
     // Sign JWT and set cookie
     signTokenAndSetCookie(user, sessionId, res);
 
-    // Fetch user registrations
-    const registrations = await Registration.find({ email: email.toLowerCase() }).select('-__v');
+    // Fetch user registrations (lean: plain objects, faster)
+    const registrations = await Registration.find({ email: email.toLowerCase() }).select('-__v').lean();
 
     res.status(201).json({
       success: true,
@@ -127,8 +127,8 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Find user (include password for comparison)
-    const user = await User.findOne({ email: email.toLowerCase() });
+    // Find user — select password explicitly (select:false by default) + only needed fields
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password name email access activeSessionId');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -153,8 +153,8 @@ exports.login = async (req, res) => {
     // Sign JWT and set cookie
     signTokenAndSetCookie(user, sessionId, res);
 
-    // Fetch their registrations
-    const registrations = await Registration.find({ email: user.email.toLowerCase() }).select('-__v');
+    // Fetch their registrations (lean: plain objects, no Mongoose overhead)
+    const registrations = await Registration.find({ email: user.email.toLowerCase() }).select('-__v').lean();
 
     res.json({
       success: true,
@@ -212,7 +212,8 @@ exports.logout = async (req, res) => {
  */
 exports.getMe = async (req, res) => {
   try {
-    const registrations = await Registration.find({ email: req.user.email.toLowerCase() }).select('-__v');
+    // lean() returns a plain JS object: 2-5x faster than a full Mongoose document
+    const registrations = await Registration.find({ email: req.user.email.toLowerCase() }).select('-__v').lean();
 
     res.json({
       success: true,

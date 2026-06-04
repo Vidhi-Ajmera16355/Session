@@ -25,7 +25,8 @@ router.get('/users', authAdmin, async (req, res) => {
   try {
     const users = await User.find()
       .select('-password -__v')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({ success: true, data: users });
   } catch (err) {

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext(null);
@@ -6,21 +6,32 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Deduplication: if multiple callers invoke checkAuth simultaneously, reuse the same in-flight promise
+  const pendingAuthRef = useRef(null);
 
   // Check if user is already logged in (cookie-based session restore)
   const checkAuth = useCallback(async () => {
-    try {
-      const res = await axios.get('/api/auth/me');
-      if (res.data.success) {
-        setUser(res.data.user);
-      } else {
+    // If already in-flight, return the same promise — no duplicate DB hit
+    if (pendingAuthRef.current) return pendingAuthRef.current;
+
+    const promise = axios.get('/api/auth/me')
+      .then(res => {
+        if (res.data.success) {
+          setUser(res.data.user);
+        } else {
+          setUser(null);
+        }
+      })
+      .catch(() => {
         setUser(null);
-      }
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
+      })
+      .finally(() => {
+        pendingAuthRef.current = null;
+        setLoading(false);
+      });
+
+    pendingAuthRef.current = promise;
+    return promise;
   }, []);
 
   useEffect(() => {
@@ -78,3 +89,4 @@ export function useAuth() {
   }
   return context;
 }
+

@@ -69,7 +69,7 @@ export default function Footer() {
             ))}
           </div>
           <div style={{ marginTop: 12, color: 'var(--text-muted)' }}>
-            Only serious learners · Workshop closes 14 June · 1-on-1 closes 20 June 2026
+            Only serious learners · Workshop closes 29 June · 1-on-1 closes 25 June 2026
           </div>
         </div>
       </div>

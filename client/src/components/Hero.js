@@ -139,12 +139,12 @@ export default function Hero({ onCTA }) {
         <div style={s.deadline} className="fade-up-4">
           <div style={s.dlItem}>
             <span style={s.dlLabel}>Workshop Registration</span>
-            <span style={s.dlDate}>Closes 14 June 2026</span>
+            <span style={s.dlDate}>Closes 25 June 2026</span>
           </div>
           <div style={s.divider} />
           <div style={s.dlItem}>
             <span style={s.dlLabel}>1-on-1 Call Booking</span>
-            <span style={s.dlDate}>Closes 20 June 2026</span>
+            <span style={s.dlDate}>Closes 29 June 2026</span>
           </div>
         </div>
       </div>

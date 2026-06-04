@@ -126,7 +126,7 @@ const authAdmin = (req, res, next) => {
 // GET /api/registrations - admin view all registrations
 router.get('/registrations', authAdmin, async (req, res) => {
   try {
-    const registrations = await Registration.find().sort({ registeredAt: -1 });
+    const registrations = await Registration.find().sort({ registeredAt: -1 }).lean();
     res.json({ success: true, data: registrations });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Server error.' });

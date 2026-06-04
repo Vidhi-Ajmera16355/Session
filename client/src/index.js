@@ -8,6 +8,9 @@ import App from './App';
 axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'https://session-psi.vercel.app';
 // Send cookies with every request (required for HTTP-only JWT auth)
 axios.defaults.withCredentials = true;
+// Fail fast: don't hang the UI waiting for a slow server response
+axios.defaults.timeout = 10000; // 10 seconds
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<React.StrictMode><App /></React.StrictMode>);
+

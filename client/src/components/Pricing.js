@@ -159,7 +159,7 @@ export default function Pricing({ onSelect }) {
             <div style={s.priceRow}>
               <span style={s.price}>₹59</span>
             </div>
-            <div style={s.priceNote}>Lifetime Access (Recorded Session)</div>
+            <div style={s.priceNote}>Lifetime Access (Recorded Session) · <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Only till 29 June</span></div>
             <div style={s.desc}>Completely confused about where to start? This session breaks down the roadmap to secure your first opportunity.</div>
             <ul style={s.perks}>
               {['My personal journey (started in 2nd year)', 'Roadmap to your first internship/job', 'Building a strong profile over time', 'Suitable even if you feel you have done nothing', 'Watch anytime at your own pace'].map((p, i) => (
@@ -201,7 +201,7 @@ export default function Pricing({ onSelect }) {
             <div style={s.priceRow}>
               <span style={s.price}>₹159</span>
             </div>
-            <div style={s.priceNote}>Only till 25 June (Limited to first 50 seats)</div>
+            <div style={s.priceNote}><span style={{ color: 'var(--accent)', fontWeight: 700 }}>Only till 25 June</span> · Limited to first 50 seats</div>
             <div style={s.desc}>Direct access to avoid common mistakes. Prices are kept minimal for serious individuals building their career. Keep your notes handy!</div>
             <ul style={s.perks}>
               {['Personalized to your current situation', 'Detailed schedule & timing shared via Gmail', 'Session details available on the website', 'Choice of Google Meet or WhatsApp Call', 'Action-oriented and practical discussion'].map((p, i) => (

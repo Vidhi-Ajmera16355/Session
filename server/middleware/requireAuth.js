@@ -40,8 +40,11 @@ const requireAuth = async (req, res, next) => {
       });
     }
 
-    // 3. Fetch user from database
-    const user = await User.findById(decoded.userId).select('+password');
+    // 3. Fetch user from database — lean() returns a plain object (2-5× faster than a Mongoose doc)
+    //    Only select fields needed for auth checks and downstream handlers.
+    const user = await User.findById(decoded.userId)
+      .select('name email access activeSessionId createdAt')
+      .lean();
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -57,9 +60,8 @@ const requireAuth = async (req, res, next) => {
       });
     }
 
-    // 5. Attach user to request (without password)
+    // 5. Attach plain user object to request (password never selected)
     req.user = user;
-    req.user.password = undefined;
     next();
   } catch (err) {
     console.error('requireAuth error:', err.message);
