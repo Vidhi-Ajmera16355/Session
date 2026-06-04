@@ -1,4 +1,5 @@
 import React from 'react';
+import ScrollAnimation from './ScrollAnimation';
 import { useAuth } from '../context/AuthContext';
 
 export default function Pricing({ onSelect }) {
@@ -13,11 +14,13 @@ export default function Pricing({ onSelect }) {
       borderBottom: '1px solid var(--border)',
       background: 'var(--bg-primary)',
       transition: 'background 0.3s, border-color 0.3s',
+      position: 'relative',
+      overflow: 'hidden',
     },
     heading: {
-      fontSize: 'clamp(24px, 4vw, 36px)',
+      fontSize: 'clamp(32px, 5vw, 48px)',
       fontWeight: 800,
-      marginBottom: 8,
+      marginBottom: 16,
       textAlign: 'center',
     },
     sub: {
@@ -134,32 +137,29 @@ export default function Pricing({ onSelect }) {
   };
 
   return (
-    <section style={s.section}>
-      <div className="container">
-        <h2 style={s.heading}>Guidance Sessions</h2>
-        <p style={s.sub}>Practical, action-oriented discussions to help you find your direction.</p>
+    <section id="pricing" style={s.section}>
+      <div className="blob" style={{ top: '20%', left: '10%', width: 300, height: 300, background: 'var(--primary)' }} />
+      <div className="blob" style={{ bottom: '20%', right: '10%', width: 400, height: 400, background: 'var(--accent)' }} />
+      
+      <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+        <h2 style={s.heading} className="text-gradient">
+          Ready to Level Up? <ScrollAnimation animationClass="burst-diamond">💎</ScrollAnimation>
+        </h2>
+        <p style={s.sub}>Choose the plan that fits your current goals.</p>
         <div style={s.grid}>
           {/* Workshop */}
           <div 
-            style={{ ...s.card, ...s.cardFeatured }} 
-            className="fade-up"
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'none';
-              e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
-            }}
+            style={{ ...s.card, transform: 'scale(1.05)', zIndex: 2 }}
+            className="fade-up-2 gradient-border glow-hover"
           >
             <span style={s.featuredBadge}>Most Popular</span>
             <div style={{ ...s.planLabel, ...(hasWorkshop ? { textDecoration: 'underline', color: 'var(--primary)' } : {}) }}>
               Group Workshop {hasWorkshop && '✓ (Purchased)'}
             </div>
             <div style={s.priceRow}>
-              <span style={s.price}>₹1</span>
+              <span className="strikethrough">₹99</span><span style={s.price}>₹59</span>
             </div>
-            <div style={s.priceNote}>Lifetime Access (Recorded Session) · <span style={{ color: 'var(--accent)', fontWeight: 700 }}>Only till 29 June</span></div>
+            <div style={s.priceNote}>Lifetime Access (Recorded Session) · <span style={{ color: 'var(--accent)', fontWeight: 700, animation: 'pulse 2s infinite' }}>Only till 29 June</span></div>
             <div style={s.desc}>Completely confused about where to start? This session breaks down the roadmap to secure your first opportunity.</div>
             <ul style={s.perks}>
               {['My personal journey (started in 2nd year)', 'Roadmap to your first internship/job', 'Building a strong profile over time', 'Suitable even if you feel you have done nothing', 'Watch anytime at your own pace'].map((p, i) => (
@@ -172,12 +172,13 @@ export default function Pricing({ onSelect }) {
               </button>
             ) : (
               <button 
-                style={{ ...s.btn, ...s.btnPrimary }} 
+                style={{ ...s.btn, ...s.btnPrimary, position: 'relative', overflow: 'hidden' }} 
                 onClick={() => onSelect('workshop')}
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
               >
-                Register for ₹1 →
+                <div style={{position: 'absolute', top: 0, left: '-100%', width: '100%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', animation: 'shimmer 2s infinite'}}></div>
+                Register for ₹59 →
               </button>
             )}
           </div>
@@ -185,7 +186,7 @@ export default function Pricing({ onSelect }) {
           {/* 1-on-1 */}
           <div 
             style={s.card} 
-            className="fade-up-2"
+            className="fade-up-2 glow-hover"
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-4px)';
               e.currentTarget.style.borderColor = 'var(--primary)';

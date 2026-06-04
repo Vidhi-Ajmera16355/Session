@@ -1,4 +1,6 @@
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dns = require('dns');
@@ -11,6 +13,7 @@ require('dotenv').config();
 dns.setServers(['8.8.8.8', '8.8.4.4']);
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 
 // Enable response compression for performance
@@ -29,6 +32,29 @@ app.use(cors({
   origin: allowedOrigins,
   credentials: true,
 }));
+
+// Setup Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: allowedOrigins,
+    credentials: true,
+  }
+});
+
+// Make io accessible in routes
+app.set('io', io);
+
+io.on('connection', (socket) => {
+  console.log('Socket connected:', socket.id);
+  
+  socket.on('join_room', (room) => {
+    socket.join(room);
+  });
+  
+  socket.on('disconnect', () => {
+    console.log('Socket disconnected:', socket.id);
+  });
+});
 
 // Parse JSON bodies and cookies
 app.use(express.json());
@@ -60,7 +86,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(() => {
     console.log('✓ MongoDB connected');
-    app.listen(PORT, () => console.log(`✓ Server running on http://localhost:${PORT}`));
+    server.listen(PORT, () => console.log(`✓ Server running on http://localhost:${PORT}`));
   })
   .catch(err => {
     console.error('MongoDB connection error:', err);

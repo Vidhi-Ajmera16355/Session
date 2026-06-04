@@ -5,11 +5,16 @@ export default function Footer() {
     footer: {
       background: 'var(--bg-tertiary)',
       color: 'var(--text-muted)',
-      padding: '48px 0',
+      padding: '0 0 48px 0',
       textAlign: 'center',
       fontSize: 13,
-      borderTop: '1px solid var(--border)',
       transition: 'background 0.3s, border-color 0.3s',
+    },
+    divider: {
+      height: '4px',
+      background: 'linear-gradient(to right, var(--primary), var(--accent), var(--accent-orange))',
+      width: '100%',
+      marginBottom: '48px',
     },
     inner: {
       display: 'flex',
@@ -50,6 +55,7 @@ export default function Footer() {
 
   return (
     <footer style={s.footer}>
+      <div style={s.divider}></div>
       <div className="container">
         <div style={s.inner}>
           <div style={s.name}>Internship Playbook</div>
@@ -70,6 +76,11 @@ export default function Footer() {
           </div>
           <div style={{ marginTop: 12, color: 'var(--text-muted)' }}>
             Only serious learners · Workshop closes 29 June · 1-on-1 closes 25 June 2026
+          </div>
+          <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
+             <a href="https://linkedin.com" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>LinkedIn</a>
+             <a href="https://github.com" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>GitHub</a>
+             <a href="https://twitter.com" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>Twitter</a>
           </div>
         </div>
       </div>

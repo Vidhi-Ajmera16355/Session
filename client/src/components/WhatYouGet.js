@@ -1,12 +1,13 @@
 import React from 'react';
+import ScrollAnimation from './ScrollAnimation';
 
 const topics = [
-  { n: '01', title: 'Getting your first internship', desc: 'How to secure your first role, even without prior experience, and build momentum.' },
-  { n: '02', title: 'On-campus vs off-campus strategy', desc: 'Understanding the different approaches required for both paths.' },
-  { n: '03', title: 'Practical Interview Preparation', desc: 'Focused preparation strategies beyond just practicing coding problems.' },
-  { n: '04', title: 'Evaluating Opportunities', desc: 'How to weigh different offers and choose what aligns with your long-term goals.' },
-  { n: '05', title: 'Building a Strong Profile', desc: 'How to present your skills authentically on your resume and LinkedIn.' },
-  { n: '06', title: 'Navigating Career Decisions', desc: 'My thought process behind taking risks and making early career choices.' },
+  { n: '01', emoji: '🌱', title: 'Getting your first internship', desc: 'How to secure your first role, even without prior experience, and build momentum.' },
+  { n: '02', emoji: '🎓', title: 'On-campus vs off-campus strategy', desc: 'Understanding the different approaches required for both paths.' },
+  { n: '03', emoji: '💻', title: 'Practical Interview Preparation', desc: 'Focused preparation strategies beyond just practicing coding problems.' },
+  { n: '04', emoji: '⚖️', title: 'Evaluating Opportunities', desc: 'How to weigh different offers and choose what aligns with your long-term goals.' },
+  { n: '05', emoji: '🚀', title: 'Building a Strong Profile', desc: 'How to present your skills authentically on your resume and LinkedIn.' },
+  { n: '06', emoji: '🧭', title: 'Navigating Career Decisions', desc: 'My thought process behind taking risks and making early career choices.' },
 ];
 
 export default function WhatYouGet() {
@@ -44,10 +45,22 @@ export default function WhatYouGet() {
     num: {
       fontFamily: 'Outfit, sans-serif',
       fontSize: 14,
-      fontWeight: 700,
-      color: 'var(--primary)',
+      fontWeight: 800,
+      color: '#fff',
+      background: 'linear-gradient(135deg, var(--primary), var(--accent))',
+      padding: '4px 10px',
+      borderRadius: '12px',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       marginBottom: 16,
       letterSpacing: '1px',
+    },
+    emoji: {
+      fontSize: 24,
+      marginBottom: 12,
+      display: 'inline-block',
+      marginRight: 10,
     },
     title: {
       fontWeight: 700,
@@ -66,14 +79,16 @@ export default function WhatYouGet() {
   return (
     <section style={s.section}>
       <div className="container">
-        <h2 style={s.heading}>What the Session Covers</h2>
+        <h2 style={s.heading}>
+          What the Session Covers <ScrollAnimation animationClass="fly-rocket">🚀</ScrollAnimation>
+        </h2>
         <p style={s.sub}>Practical topics based on my real-world engineering experiences.</p>
         <div style={s.grid}>
           {topics.map((t, i) => (
             <div 
               key={i} 
               style={s.card}
-              className="fade-up"
+              className="fade-up glow-hover"
               onMouseEnter={e => {
                 e.currentTarget.style.transform = 'translateY(-4px)';
                 e.currentTarget.style.borderColor = 'var(--primary)';
@@ -85,7 +100,10 @@ export default function WhatYouGet() {
                 e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
               }}
             >
-              <div style={s.num}>{t.n}</div>
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span style={s.emoji}>{t.emoji}</span>
+                <div style={s.num}>{t.n}</div>
+              </div>
               <div style={s.title}>{t.title}</div>
               <div style={s.desc}>{t.desc}</div>
             </div>

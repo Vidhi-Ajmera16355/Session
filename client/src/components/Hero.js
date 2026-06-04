@@ -3,12 +3,13 @@ import React from 'react';
 export default function Hero({ onCTA }) {
   const s = {
     hero: {
-      padding: '120px 0 80px',
+      padding: '30px 0 60px',
       position: 'relative',
       overflow: 'hidden',
       background: 'radial-gradient(circle at top right, var(--primary-light), transparent 60%), var(--bg-primary)',
       borderBottom: '1px solid var(--border)',
       transition: 'background 0.3s, border-color 0.3s',
+      position: 'relative',
     },
     badge: {
       display: 'inline-flex',
@@ -107,45 +108,62 @@ export default function Hero({ onCTA }) {
 
   return (
     <section style={s.hero}>
-      <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-        <div className="fade-up" style={s.badge}>
-          <span>🎯</span> Practical Guidance for Juniors
-        </div>
-        <h1 className="fade-up-2" style={s.h1}>
-          Your Roadmap to <span style={s.accent}>Tech Opportunities</span>
-          <br />— Starting from Scratch
-        </h1>
-        <p className="fade-up-3" style={s.sub}>
-          I started seriously in my second year. If I can build a strong profile and secure good opportunities, you can too. Let's focus on practical steps, avoiding common mistakes, and finding your direction—because starting today matters more than when you started.
-        </p>
-        <div className="fade-up-4" style={s.btnRow}>
-          <button 
-            style={s.btnPrimary} 
-            onClick={() => onCTA('workshop')}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
-          >
-            Join the Session — ₹59 →
-          </button>
-          <button 
-            style={s.btnSecondary} 
-            onClick={() => onCTA('oneonone')}
-            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
-          >
-            Book 1-on-1 Call — ₹159
-          </button>
-        </div>
-        <div style={s.deadline} className="fade-up-4">
-          <div style={s.dlItem}>
-            <span style={s.dlLabel}>Workshop Registration</span>
-            <span style={s.dlDate}>Closes 25 June 2026</span>
+      <div className="blob" style={{ position: 'absolute', top: '-10%', right: '-5%', width: 500, height: 500, background: 'var(--primary)', opacity: 0.2, filter: 'blur(80px)', borderRadius: '50%' }} />
+      <div className="blob" style={{ position: 'absolute', bottom: '-10%', left: '-5%', width: 400, height: 400, background: 'var(--accent-orange)', opacity: 0.15, filter: 'blur(80px)', borderRadius: '50%' }} />
+
+      <div className="container" style={{ ...s.container, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '48px', flexWrap: 'wrap-reverse' }}>
+        <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+          <div style={s.badge} className="fade-up glow-hover">
+            <span>🎯</span> Practical Guidance for Juniors
           </div>
-          <div style={s.divider} />
-          <div style={s.dlItem}>
-            <span style={s.dlLabel}>1-on-1 Call Booking</span>
-            <span style={s.dlDate}>Closes 29 June 2026</span>
+          <h1 style={{ ...s.h1, textAlign: 'left', margin: '0 0 24px' }} className="fade-up-2">
+            Your Roadmap to <span className="text-gradient">Tech Opportunities</span>
+            <br />— Starting from Scratch
+          </h1>
+          <p className="fade-up-3" style={{ ...s.sub, textAlign: 'left', margin: '0 0 40px' }}>
+            I started seriously in my second year. If I can build a strong profile and secure good opportunities, you can too. Let's focus on practical steps, avoiding common mistakes, and finding your direction—because starting today matters more than when you started.
+          </p>
+          <div className="fade-up-4" style={{ ...s.btnRow, justifyContent: 'flex-start' }}>
+            <button 
+              style={{ ...s.btnPrimary, position: 'relative', overflow: 'hidden' }} 
+              className="glow-hover"
+              onClick={() => onCTA('workshop')}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
+            >
+              <div style={{position: 'absolute', top: 0, left: '-100%', width: '100%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', animation: 'shimmer 2.5s infinite'}}></div>
+              Join the Session — ₹59 →
+            </button>
+            <button 
+              style={s.btnSecondary} 
+              className="glow-hover"
+              onClick={() => onCTA('oneonone')}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
+            >
+              Book 1-on-1 Call — ₹159
+            </button>
           </div>
+          <div style={{ ...s.deadline, justifyContent: 'flex-start' }} className="fade-up-4">
+            <div style={s.dlItem}>
+              <span style={s.dlLabel}>Workshop Registration</span>
+              <span style={s.dlDate}>Closes 25 June 2026</span>
+            </div>
+            <div style={s.divider} />
+            <div style={s.dlItem}>
+              <span style={s.dlLabel}>1-on-1 Call Booking</span>
+              <span style={s.dlDate}>Closes 29 June 2026</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style={{ flex: '1 1 300px', display: 'flex', justifyContent: 'center' }} className="fade-up-3">
+          <img 
+            src="/girl_laptop_avatar_1780570517777.png" 
+            alt="Avatar" 
+            className="glow-hover"
+            style={{ width: '100%', maxWidth: '380px', height: 'auto', borderRadius: '50%', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '4px solid var(--border)' }}
+          />
         </div>
       </div>
     </section>

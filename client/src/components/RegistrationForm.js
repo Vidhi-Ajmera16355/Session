@@ -1,49 +1,159 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-
-const UPI_ID = '7668903828@pthdfc';
-const PAYEE_NAME = 'Vidhi Ajmera';
+import io from 'socket.io-client';
+import { useAuth } from '../context/AuthContext';
+import ScrollAnimation from './ScrollAnimation';
 
 export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', phone: '', email: '', college: '', transactionId: '', goal: '' });
-  const [copied, setCopied] = useState(false);
+  const { user } = useAuth();
+  const [form, setForm] = useState({ name: '', phone: '', email: '', college: '', goal: '' });
   const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState(1); // 1: Details, 2: Pay, 3: Success
   const [error, setError] = useState('');
-
-  const amount = selectedPlan === 'workshop' ? 1 : 159;
-
-  // Generate the deep-link UPI URI
-  const upiLink = `upi://pay?pa=${UPI_ID}&pn=${encodeURIComponent(PAYEE_NAME)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`Registration for ${selectedPlan === 'workshop' ? 'Workshop' : '1-on-1 Call'}`)}`;
+  const [recentBuyer, setRecentBuyer] = useState(null);
   
-  // Use QR Server API to generate high-quality QR code
-  const qrCodeSrc = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiLink)}&margin=10`;
+  const amount = selectedPlan === 'workshop' ? 59 : 159;
+
+  useEffect(() => {
+    if (user) {
+      setForm(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone
+      }));
+    }
+  }, [user]);
+
+  useEffect(() => {
+    // Determine the base URL for the API/socket connection
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // If you are proxying through package.json, socket URL is the proxy or current host
+    const socketUrl = isLocalhost ? 'http://localhost:5000' : window.location.origin;
+    
+    const socket = io(socketUrl, {
+      withCredentials: true
+    });
+
+    socket.on('payment_received', (data) => {
+      // Social proof toast when someone buys
+      setRecentBuyer(data);
+      setTimeout(() => setRecentBuyer(null), 5000);
+    });
+
+    return () => socket.disconnect();
+  }, []);
 
   const handleChange = e => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const copyUPI = () => {
-    navigator.clipboard.writeText(UPI_ID).catch(() => {});
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleSubmit = async (e) => {
+  const handleNextStep = (e) => {
     e.preventDefault();
     setError('');
-    const { name, phone, email, college, transactionId } = form;
-    if (!name || !phone || !email || !college || !transactionId) {
-      setError('Please fill in all required fields including the 12-digit transaction ID.');
+    const { name, phone, email, college } = form;
+    if (!name || !phone || !email || !college) {
+      setError('Please fill in all required fields.');
       return;
     }
+    setStep(2);
+  };
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => {
+        resolve(true);
+      };
+      script.onerror = () => {
+        resolve(false);
+      };
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayment = async () => {
+    setError('');
     setLoading(true);
+
+    const res = await loadRazorpayScript();
+    if (!res) {
+      setError('Razorpay SDK failed to load. Are you online?');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await axios.post('/api/register', { ...form, plan: selectedPlan, amount });
-      setSubmitted(true);
+      // 1. Create order on backend
+      const orderRes = await axios.post('/api/create-order', { plan: selectedPlan });
+      if (!orderRes.data.success) {
+        throw new Error(orderRes.data.message || 'Failed to create order');
+      }
+
+      const { orderId, amount: rpAmount, keyId } = orderRes.data;
+
+      // 2. Open Razorpay modal
+      const options = {
+        key: keyId,
+        amount: rpAmount,
+        currency: "INR",
+        name: "Internship Playbook",
+        description: selectedPlan === 'workshop' ? 'Group Workshop Registration' : '1-on-1 Call Registration',
+        order_id: orderId,
+        handler: async function (response) {
+          try {
+            setLoading(true);
+            // 3. Verify payment on backend
+            const verifyRes = await axios.post('/api/verify-payment', {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              formData: { ...form, plan: selectedPlan }
+            });
+
+            if (verifyRes.data.success) {
+              setStep(3); // Move to Success step
+            } else {
+              setError(verifyRes.data.message || 'Payment verification failed');
+              setStep(1);
+            }
+          } catch (err) {
+            setError(err.response?.data?.message || 'Error verifying payment. If amount was deducted, please contact support.');
+            setStep(1);
+          } finally {
+            setLoading(false);
+          }
+        },
+        prefill: {
+          name: form.name,
+          email: form.email,
+          contact: form.phone
+        },
+        readonly: {
+          email: true,
+          contact: true,
+          name: true
+        },
+        theme: {
+          color: "#6366f1"
+        },
+        modal: {
+          ondismiss: function () {
+            setLoading(false);
+          }
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.open();
+
     } catch (err) {
-      setError(err.response?.data?.message || 'Something went wrong. Please try again.');
-    } finally {
+      setError(err.response?.data?.message || err.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -53,6 +163,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       padding: '80px 0',
       background: 'var(--bg-secondary)',
       borderBottom: '1px solid var(--border)',
+      position: 'relative',
     },
     heading: {
       fontSize: 'clamp(24px, 4vw, 36px)',
@@ -69,109 +180,19 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       margin: '0 auto 48px',
     },
     layout: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-      gap: 40,
-      alignItems: 'start',
-    },
-    card: {
-      background: 'var(--bg-primary)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-md)',
-      padding: '32px 24px',
-      boxShadow: 'var(--shadow-md)',
-    },
-    payTitle: {
-      fontWeight: 700,
-      fontSize: 18,
-      marginBottom: 20,
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      color: 'var(--text-primary)',
-    },
-    alertBox: {
-      background: '#fffbeb',
-      border: '1px solid #fcd34d',
-      borderRadius: 'var(--radius-sm)',
-      padding: '16px',
-      marginBottom: '24px',
-      color: '#92400e',
-      fontSize: '14px',
-      lineHeight: '1.6',
-    },
-    qrContainer: {
-      background: '#ffffff', // QR code requires white background for high contrast scanning
-      padding: 16,
-      borderRadius: 'var(--radius-md)',
       display: 'flex',
       justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 20,
-      border: '1px solid var(--border)',
+    },
+    card: {
       width: '100%',
-      maxWidth: 240,
-      margin: '0 auto 20px',
-      boxShadow: 'var(--shadow-sm)',
-    },
-    qrImg: {
-      width: '100%',
-      height: 'auto',
-      maxWidth: 200,
-      display: 'block',
-    },
-    upiRow: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      marginBottom: 20,
-    },
-    upiBox: {
-      flex: 1,
-      background: 'var(--bg-tertiary)',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-sm)',
-      padding: '12px 14px',
-      fontSize: 13,
-      fontFamily: 'monospace',
-      color: 'var(--text-primary)',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    },
-    copyBtn: {
-      background: 'var(--primary)',
-      color: '#ffffff',
-      borderRadius: 'var(--radius-sm)',
-      padding: '12px 18px',
-      fontSize: 13,
-      fontWeight: 600,
-      border: 'none',
-      cursor: 'pointer',
-    },
-    copyBtnCopied: {
-      background: 'var(--accent)',
-    },
-    steps: {
-      fontSize: 14,
-      color: 'var(--text-secondary)',
-      lineHeight: 1.8,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 8,
-    },
-    stepItem: {
-      display: 'flex',
-      gap: 8,
-    },
-    stepNum: {
-      fontWeight: 700,
-      color: 'var(--primary)',
+      maxWidth: 640,
+      padding: '40px 32px',
+      borderRadius: 'var(--radius-lg)',
     },
     formGrid: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
-      gap: 16,
+      gap: 20,
     },
     field: {
       display: 'flex',
@@ -185,7 +206,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       gridColumn: '1 / -1',
     },
     label: {
-      fontSize: 12,
+      fontSize: 13,
       color: 'var(--text-secondary)',
       fontWeight: 600,
       letterSpacing: '0.2px',
@@ -193,279 +214,264 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
     planToggle: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
-      gap: 12,
-      marginBottom: 20,
+      gap: 16,
+      marginBottom: 32,
     },
     planOpt: {
-      padding: '14px',
-      border: '1px solid var(--border)',
-      borderRadius: 'var(--radius-sm)',
+      padding: '16px',
+      border: '2px solid var(--border)',
+      borderRadius: 'var(--radius-md)',
       cursor: 'pointer',
       transition: 'all 0.2s',
-      background: 'var(--bg-secondary)',
+      background: 'var(--bg-primary)',
       textAlign: 'center',
     },
     planOptActive: {
       borderColor: 'var(--primary)',
       background: 'var(--primary-light)',
-      boxShadow: '0 0 0 2px var(--primary)',
+      boxShadow: '0 4px 12px rgba(99, 102, 241, 0.15)',
     },
     planOptTitle: {
-      fontSize: 14,
+      fontSize: 15,
       fontWeight: 700,
       color: 'var(--text-primary)',
-      marginBottom: 2,
+      marginBottom: 4,
     },
     planOptPrice: {
-      fontSize: 13,
-      fontWeight: 600,
+      fontSize: 14,
+      fontWeight: 800,
       color: 'var(--primary)',
     },
     submitBtn: {
       width: '100%',
       marginTop: 24,
       padding: '16px',
-      background: 'var(--primary)',
+      background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%)',
       color: '#ffffff',
-      borderRadius: 'var(--radius-sm)',
-      fontSize: 15,
+      borderRadius: 'var(--radius-md)',
+      fontSize: 16,
       fontWeight: 700,
-      boxShadow: 'var(--shadow-md)',
+      boxShadow: '0 8px 20px rgba(99, 102, 241, 0.3)',
       border: 'none',
       cursor: 'pointer',
+      transition: 'transform 0.2s, box-shadow 0.2s',
     },
     submitBtnDisabled: {
       opacity: 0.6,
       cursor: 'not-allowed',
+      transform: 'none !important',
+      boxShadow: 'none !important',
     },
     successBox: {
       textAlign: 'center',
-      padding: '64px 32px',
-      border: '1px solid var(--accent)',
-      borderRadius: 'var(--radius-md)',
-      background: 'var(--accent-light)',
-      maxWidth: 600,
-      margin: '0 auto',
-      boxShadow: 'var(--shadow-lg)',
+      padding: '48px 32px',
     },
     successIcon: {
-      fontSize: 48,
-      marginBottom: 16,
+      fontSize: 64,
+      marginBottom: 24,
+      animation: 'pulse 2s infinite',
     },
     successTitle: {
       fontWeight: 800,
-      fontSize: 26,
-      marginBottom: 12,
+      fontSize: 28,
+      marginBottom: 16,
       color: 'var(--accent)',
     },
     successSub: {
-      fontSize: 15,
+      fontSize: 16,
       color: 'var(--text-secondary)',
       lineHeight: 1.7,
     },
     errorMsg: {
-      fontSize: 13,
+      fontSize: 14,
       color: '#ef4444',
-      marginTop: 12,
-      fontWeight: 500,
-      textAlign: 'center',
-    },
-    badge: {
-      display: 'inline-block',
-      padding: '3px 8px',
-      background: 'var(--accent-orange-light)',
-      color: 'var(--accent-orange)',
-      fontSize: 11,
+      marginTop: 16,
       fontWeight: 600,
-      borderRadius: 4,
-      marginBottom: 8,
-      alignSelf: 'center',
+      textAlign: 'center',
+      background: 'rgba(239, 68, 68, 0.1)',
+      padding: '12px',
+      borderRadius: 'var(--radius-sm)',
+    },
+    toast: {
+      position: 'fixed',
+      bottom: 32,
+      right: 32,
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border)',
+      borderLeft: '4px solid var(--primary)',
+      boxShadow: '0 10px 40px rgba(99, 102, 241, 0.25)',
+      padding: '20px 24px',
+      borderRadius: 'var(--radius-md)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 16,
+      zIndex: 1000,
+      animation: 'toastEnter 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
     }
   };
 
-  if (submitted) {
-    return (
-      <section id="register" style={s.section}>
-        <div className="container">
-          <div style={s.successBox} className="fade-up">
-            <div style={s.successIcon}>🎉</div>
-            <div style={s.successTitle}>Registration Received!</div>
-            <p style={s.successSub}>
-              Thank you, <strong>{form.name}</strong>. Your payment for the <strong>{selectedPlan === 'workshop' ? 'Group Workshop' : '1-on-1 Call'}</strong> is being verified.
-              <br /><br />
-              <strong>Next Step:</strong> You must create a login account to access the session recording or schedule once verified.
-            </p>
-            <button
-              onClick={() => navigate('/register')}
-              style={{
-                background: 'var(--primary)',
-                color: '#fff',
-                padding: '14px 28px',
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '16px',
-                fontWeight: '700',
-                cursor: 'pointer',
-                marginTop: '24px',
-                boxShadow: 'var(--shadow-md)',
-              }}
-            >
-              Create Login Account →
-            </button>
-          </div>
-        </div>
-      </section>
-    );
-  }
-
   return (
     <section id="register" style={s.section}>
-      <div className="container">
-        <h2 style={s.heading}>Register Now</h2>
-        <p style={s.sub}>Scan the dynamic QR code below to complete your payment, then fill in your details.</p>
+      <div style={{ position: 'absolute', top: '10%', left: '-5%', width: '400px', height: '400px', background: 'var(--primary)', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, opacity: 0.15 }} />
+      <div style={{ position: 'absolute', bottom: '10%', right: '-5%', width: '300px', height: '300px', background: 'var(--accent)', borderRadius: '50%', filter: 'blur(120px)', zIndex: 0, opacity: 0.15 }} />
+      
+      <div className="container" style={{ position: 'relative', zIndex: 1 }}>
+        <h2 style={s.heading}>
+          Register Now <ScrollAnimation animationClass="unlock-bounce">🔓</ScrollAnimation>
+        </h2>
+        <p style={s.sub}>Complete your registration in just a few clicks.</p>
 
         <div style={s.layout}>
-          {/* LEFT — Payment Box */}
-          <div style={s.card} className="fade-up-2">
-            
-            <div style={s.alertBox}>
-              <strong>⚠️ MANDATORY STEP:</strong> Your seat is NOT booked just by paying. You <strong>MUST</strong> fill out the form on the right and submit your Transaction ID/UTR to complete registration.
-            </div>
-
-            <div style={s.payTitle}>
-              <span>💳</span> Secure Payment via UPI
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 16 }}>
-              <div style={s.badge}>Amount: ₹{amount}</div>
-              <div style={s.qrContainer}>
-                <img src={qrCodeSrc} alt={`UPI QR Code for ₹${amount}`} style={s.qrImg} />
+          <div style={s.card} className="glass fade-up shadow-lg">
+            {/* Stepper Header */}
+            <div className="stepper-container">
+              <div className={`step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
+                <div className="step-circle">{step > 1 ? '✓' : '1'}</div>
+                <div className="step-label">Details</div>
               </div>
-              
-              {/* Deep link button for mobile users */}
-              <a 
-                href={upiLink}
-                style={{
-                  display: 'inline-block',
-                  background: '#22c55e', // Green for payment action
-                  color: '#ffffff',
-                  textDecoration: 'none',
-                  padding: '12px 18px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  textAlign: 'center',
-                  width: '100%',
-                  maxWidth: '240px',
-                  marginBottom: '12px',
-                  boxShadow: 'var(--shadow-sm)'
-                }}
-              >
-                ⚡ Pay via UPI App (Mobile)
-              </a>
-
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 12 }}>
-                Scan the QR or click the button above to pay via GPay, PhonePe, Paytm, etc.
-              </p>
-            </div>
-
-            <div style={s.upiRow}>
-              <div style={s.upiBox}>{UPI_ID}</div>
-              <button 
-                type="button"
-                style={{ ...s.copyBtn, ...(copied ? s.copyBtnCopied : {}) }} 
-                onClick={copyUPI}
-              >
-                {copied ? '✓ Copied' : 'Copy UPI'}
-              </button>
-            </div>
-
-            <div style={s.steps}>
-              <div style={s.stepItem}>
-                <span style={s.stepNum}>1.</span>
-                <span>Scan QR or click the button to send <strong>₹{amount}</strong>.</span>
+              <div className={`step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
+                <div className="step-circle">{step > 2 ? '✓' : '2'}</div>
+                <div className="step-label">Payment</div>
               </div>
-              <div style={s.stepItem}>
-                <span style={s.stepNum}>2.</span>
-                <span>Complete the transfer and copy your 12-digit UTR.</span>
-              </div>
-              <div style={s.stepItem}>
-                <span style={s.stepNum}>3.</span>
-                <span>Enter your <strong>Transaction ID / UTR number</strong> in the form.</span>
-              </div>
-              <div style={s.stepItem}>
-                <span style={s.stepNum}>4.</span>
-                <span>Click Submit Registration.</span>
+              <div className={`step ${step === 3 ? 'active' : ''}`}>
+                <div className="step-circle">3</div>
+                <div className="step-label">Confirmation</div>
               </div>
             </div>
-          </div>
 
-          {/* RIGHT — Form Box */}
-          <div style={s.card} className="fade-up-3">
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, letterSpacing: '0.3px', textTransform: 'uppercase', fontWeight: 600 }}>
-              Step 2: Submit Registration
-            </div>
-            <div style={s.planToggle}>
-              {[
-                { key: 'workshop', label: 'Group Workshop', price: '₹1' },
-                { key: 'oneonone', label: '1-on-1 Call', price: '₹159' }
-              ].map(p => (
-                <div
-                  key={p.key}
-                  style={{ ...s.planOpt, ...(selectedPlan === p.key ? s.planOptActive : {}) }}
-                  onClick={() => setSelectedPlan(p.key)}
-                >
-                  <div style={s.planOptTitle}>{p.label}</div>
-                  <div style={s.planOptPrice}>{p.price}</div>
+            {/* Step 1: Details */}
+            {step === 1 && (
+              <div className="fade-up">
+                <div style={s.planToggle}>
+                  {[
+                    { key: 'workshop', label: 'Group Workshop', price: '₹59' },
+                    { key: 'oneonone', label: '1-on-1 Call', price: '₹159' }
+                  ].map(p => (
+                    <div
+                      key={p.key}
+                      style={{ ...s.planOpt, ...(selectedPlan === p.key ? s.planOptActive : {}) }}
+                      onClick={() => setSelectedPlan(p.key)}
+                      className="glow-hover"
+                    >
+                      <div style={s.planOptTitle}>{p.label}</div>
+                      <div style={s.planOptPrice}>{p.price}</div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            <form onSubmit={handleSubmit} style={s.formGrid}>
-              <div style={s.field}>
-                <label style={s.label}>Full Name *</label>
-                <input name="name" value={form.name} onChange={handleChange} placeholder="e.g. John Doe" required />
-              </div>
-              <div style={s.field}>
-                <label style={s.label}>WhatsApp Number *</label>
-                <input name="phone" value={form.phone} onChange={handleChange} placeholder="e.g. 9876543210" required />
-              </div>
-              <div style={s.fieldFull}>
-                <label style={s.label}>Email Address *</label>
-                <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="e.g. john@example.com" required />
-              </div>
-              <div style={s.fieldFull}>
-                <label style={s.label}>College & Year *</label>
-                <input name="college" value={form.college} onChange={handleChange} placeholder="e.g. IIT Delhi, 3rd Year BTech" required />
-              </div>
-              <div style={s.fieldFull}>
-                <label style={s.label}>Transaction ID / UTR number *</label>
-                <input name="transactionId" value={form.transactionId} onChange={handleChange} placeholder="Required: 12-digit UTR or Transaction Ref" required />
-              </div>
-              <div style={s.fieldFull}>
-                <label style={s.label}>What do you want to learn? (optional)</label>
-                <textarea name="goal" value={form.goal} onChange={handleChange} placeholder="e.g. Resume tips, interview process, etc." />
-              </div>
+                <form onSubmit={handleNextStep} style={s.formGrid}>
+                  <div style={s.field}>
+                    <label style={s.label}>Full Name *</label>
+                    <input name="name" value={form.name} onChange={handleChange} placeholder="e.g. John Doe" required />
+                  </div>
+                  <div style={s.field}>
+                    <label style={s.label}>WhatsApp Number *</label>
+                    <input name="phone" value={form.phone} onChange={handleChange} placeholder="e.g. 9876543210" required />
+                  </div>
+                  <div style={s.fieldFull}>
+                    <label style={s.label}>Email Address *</label>
+                    <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="e.g. john@example.com" required />
+                  </div>
+                  <div style={s.fieldFull}>
+                    <label style={s.label}>College & Year *</label>
+                    <input name="college" value={form.college} onChange={handleChange} placeholder="e.g. IIT Delhi, 3rd Year" required />
+                  </div>
+                  <div style={s.fieldFull}>
+                    <label style={s.label}>What do you want to learn? (optional)</label>
+                    <textarea name="goal" value={form.goal} onChange={handleChange} placeholder="e.g. Resume tips, interview process, etc." />
+                  </div>
 
-              {error && <div style={{...s.fieldFull, ...s.errorMsg}}>⚠ {error}</div>}
+                  {error && <div style={{...s.fieldFull, ...s.errorMsg}}>⚠ {error}</div>}
 
-              <div style={s.fieldFull}>
+                  <div style={s.fieldFull}>
+                    <button type="submit" style={s.submitBtn} className="glow-hover">
+                      Proceed to Pay (₹{amount}) →
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Step 2: Pay */}
+            {step === 2 && (
+              <div className="fade-up" style={{ textAlign: 'center', padding: '20px 0' }}>
+                <h3 style={{ fontSize: 22, fontWeight: 800, marginBottom: 16 }}>Ready to Complete?</h3>
+                <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>
+                  You are registering for the <strong>{selectedPlan === 'workshop' ? 'Group Workshop' : '1-on-1 Call'}</strong>.
+                </p>
+                
+                <div style={{ background: 'var(--bg-primary)', padding: '24px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginBottom: 32 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Name</span>
+                    <span style={{ fontWeight: 600 }}>{form.name}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Email</span>
+                    <span style={{ fontWeight: 600 }}>{form.email}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 12 }}>
+                    <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>Total Amount</span>
+                    <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: 18 }}>₹{amount}</span>
+                  </div>
+                </div>
+
+                {error && <div style={s.errorMsg}>⚠ {error}</div>}
+
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <button 
+                    onClick={() => setStep(1)} 
+                    style={{ ...s.submitBtn, background: 'var(--bg-primary)', color: 'var(--text-primary)', border: '1px solid var(--border)', boxShadow: 'none' }}
+                    disabled={loading}
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    onClick={handlePayment}
+                    style={{ ...s.submitBtn, ...(loading ? s.submitBtnDisabled : {}) }}
+                    disabled={loading}
+                    className="glow-hover"
+                  >
+                    {loading ? 'Processing...' : `Pay ₹${amount} Securely 🔒`}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Success */}
+            {step === 3 && (
+              <div style={s.successBox} className="fade-up">
+                <div style={s.successIcon}>🎉</div>
+                <div style={s.successTitle}>Registration Confirmed!</div>
+                <p style={s.successSub}>
+                  Thank you, <strong>{form.name}</strong>. Your payment was successful. You now have full access to the {selectedPlan === 'workshop' ? 'Group Workshop' : '1-on-1 Call'}.
+                  <br /><br />
+                  <strong>Next Step:</strong> Create a login account using <strong>{form.email}</strong> to access the session recording and materials.
+                </p>
                 <button
-                  type="submit"
-                  style={{ ...s.submitBtn, ...(loading ? s.submitBtnDisabled : {}) }}
-                  disabled={loading}
+                  onClick={() => navigate('/register')}
+                  style={{ ...s.submitBtn, maxWidth: 300, margin: '32px auto 0' }}
+                  className="glow-hover"
                 >
-                  {loading ? 'Submitting...' : `Submit Registration (₹${amount})`}
+                  Create Login Account →
                 </button>
               </div>
-            </form>
-
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 16, textAlign: 'center' }}>
-              Only serious learners. Verification takes up to 24 hours.
-            </p>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Social Proof Toast */}
+      {recentBuyer && (
+        <div style={s.toast}>
+          <div style={{ fontSize: 32, animation: 'pulse 2s infinite' }}>🔥</div>
+          <div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--primary)', marginBottom: 2 }}>Just joined!</div>
+            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+              <strong>{recentBuyer.name || 'Someone'}</strong> registered for the <strong>{recentBuyer.plan === 'workshop' ? 'Workshop' : '1-on-1 Call'}</strong>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

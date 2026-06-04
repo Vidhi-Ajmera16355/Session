@@ -1,4 +1,5 @@
 import React from 'react';
+import ScrollAnimation from './ScrollAnimation';
 
 const stops = [
   { org: 'IISER Bhopal', role: 'Research Intern', note: 'Unpaid — but cracking it was everything', color: 'var(--accent)', dot: 'var(--accent)' },
@@ -51,11 +52,12 @@ export default function Journey() {
       marginTop: 6,
       boxShadow: '0 0 0 4px var(--bg-primary), 0 0 0 6px var(--border)',
       transition: 'all 0.3s ease',
+      animation: 'pulse 2s infinite',
     },
     line: {
       width: 2,
       flex: 1,
-      background: 'var(--border)',
+      background: 'linear-gradient(to bottom, var(--border), var(--primary-light))',
       marginTop: 10,
     },
     contentCard: {
@@ -92,7 +94,9 @@ export default function Journey() {
   return (
     <section style={s.section}>
       <div className="container">
-        <div style={s.label}>The Journey</div>
+        <div style={s.label}>
+          The Journey <ScrollAnimation animationClass="slide-target">🎯</ScrollAnimation>
+        </div>
         <div style={s.grid}>
           {stops.map((stop, i) => (
             <div key={i} style={s.stop} className="fade-up">
@@ -102,6 +106,7 @@ export default function Journey() {
               </div>
               <div 
                 style={s.contentCard} 
+                className="glow-hover"
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateX(4px)';
                   e.currentTarget.style.borderColor = stop.dot;

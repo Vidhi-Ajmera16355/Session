@@ -7,7 +7,10 @@ const registrationSchema = new mongoose.Schema({
   college: { type: String, required: true, trim: true },
   plan: { type: String, enum: ['workshop', 'oneonone'], required: true },
   amount: { type: Number, required: true },
-  transactionId: { type: String, required: true, unique: true, index: true, trim: true },
+  transactionId: { type: String, trim: true, sparse: true, index: true },
+  razorpayOrderId: { type: String, trim: true },
+  razorpayPaymentId: { type: String, trim: true },
+  paymentMethod: { type: String, enum: ['razorpay', 'manual'], default: 'razorpay' },
   goal: { type: String, trim: true, default: '' },
   status: { type: String, enum: ['pending', 'confirmed', 'rejected'], default: 'pending' },
   registeredAt: { type: Date, default: Date.now, index: true }
