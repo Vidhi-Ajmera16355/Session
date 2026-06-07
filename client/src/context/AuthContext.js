@@ -63,6 +63,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const googleLogin = async (credential) => {
+    const res = await axios.post('/api/auth/google', { credential });
+    if (res.data.success) {
+      setUser(res.data.user);
+    }
+    return res.data;
+  };
+
   // Refresh user data (e.g., after access is granted)
   const refreshUser = async () => {
     try {
@@ -76,7 +84,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, login, googleLogin, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

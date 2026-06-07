@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -25,6 +27,23 @@ export default function LoginPage() {
         navigate('/dashboard', { replace: true });
       } else {
         setError(res.message || 'Login failed.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Network error. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await googleLogin(credentialResponse.credential);
+      if (res.success) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        setError(res.message || 'Google login failed.');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Network error. Please try again.');
@@ -65,18 +84,36 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label htmlFor="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              name="password"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={handleChange}
-              required
-              autoComplete="current-password"
-              minLength={8}
-            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label htmlFor="login-password">Password</label>
+              <Link to="/forgot-password" style={{ fontSize: '13px' }}>Forgot password?</Link>
+            </div>
+            <div style={{ position: 'relative' }}>
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                placeholder="••••••••"
+                value={form.password}
+                onChange={handleChange}
+                required
+                autoComplete="current-password"
+                minLength={8}
+                style={{ paddingRight: '40px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: '16px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? '👁️' : '🔒'}
+              </button>
+            </div>
           </div>
 
           <button
@@ -92,6 +129,15 @@ export default function LoginPage() {
               'Sign In'
             )}
           </button>
+
+          <div style={{ textAlign: 'center', margin: '20px 0', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>OR</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google Sign-In failed.')}
+              useOneTap
+            />
+          </div>
         </form>
 
         <div className="auth-footer">

@@ -17,10 +17,17 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
+    required: [function() { return !this.googleId; }, 'Password is required'],
     minlength: [8, 'Password must be at least 8 characters'],
     select: false, // Never returned in queries unless explicitly requested
   },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  resetPasswordToken: String,
+  resetPasswordExpire: Date,
   access: {
     type: Boolean,
     default: false,

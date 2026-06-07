@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
@@ -13,6 +14,8 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -41,6 +44,23 @@ export default function RegisterPage() {
         navigate('/dashboard', { replace: true });
       } else {
         setError(res.message || 'Registration failed.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Network error. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await googleLogin(credentialResponse.credential);
+      if (res.success) {
+        navigate('/dashboard', { replace: true });
+      } else {
+        setError(res.message || 'Google signup failed.');
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Network error. Please try again.');
@@ -96,32 +116,62 @@ export default function RegisterPage() {
 
           <div className="form-group">
             <label htmlFor="register-password">Password</label>
-            <input
-              id="register-password"
-              type="password"
-              name="password"
-              placeholder="Minimum 8 characters"
-              value={form.password}
-              onChange={handleChange}
-              required
-              autoComplete="new-password"
-              minLength={8}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="register-password"
+                type={showPassword ? 'text' : 'password'}
+                name="password"
+                placeholder="Minimum 8 characters"
+                value={form.password}
+                onChange={handleChange}
+                required
+                autoComplete="new-password"
+                minLength={8}
+                style={{ paddingRight: '40px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: '16px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? '👁️' : '🔒'}
+              </button>
+            </div>
           </div>
 
           <div className="form-group">
             <label htmlFor="register-confirm">Confirm Password</label>
-            <input
-              id="register-confirm"
-              type="password"
-              name="confirmPassword"
-              placeholder="Re-enter your password"
-              value={form.confirmPassword}
-              onChange={handleChange}
-              required
-              autoComplete="new-password"
-              minLength={8}
-            />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="register-confirm"
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                placeholder="Re-enter your password"
+                value={form.confirmPassword}
+                onChange={handleChange}
+                required
+                autoComplete="new-password"
+                minLength={8}
+                style={{ paddingRight: '40px' }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                  fontSize: '16px', opacity: 0.6, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}
+                title={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? '👁️' : '🔒'}
+              </button>
+            </div>
           </div>
 
           <button
@@ -137,6 +187,15 @@ export default function RegisterPage() {
               'Create Account'
             )}
           </button>
+
+          <div style={{ textAlign: 'center', margin: '20px 0', color: 'var(--text-muted)', fontSize: '13px', fontWeight: 600 }}>OR</div>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google Sign-Up failed.')}
+              useOneTap
+            />
+          </div>
         </form>
 
         <div className="auth-footer">

@@ -22,6 +22,15 @@ router.post('/register', authLimiter, authController.register);
 // POST /api/auth/login
 router.post('/login', authLimiter, authController.login);
 
+// POST /api/auth/google
+router.post('/google', authLimiter, authController.googleLogin);
+
+// POST /api/auth/forgot-password
+router.post('/forgot-password', authLimiter, authController.forgotPassword);
+
+// POST /api/auth/reset-password/:token
+router.post('/reset-password/:token', authLimiter, authController.resetPassword);
+
 // POST /api/auth/logout (requireAuth is optional here — best effort)
 router.post('/logout', requireAuth, authController.logout);
 

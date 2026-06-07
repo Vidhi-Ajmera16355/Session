@@ -11,6 +11,15 @@ axios.defaults.withCredentials = true;
 // Fail fast: don't hang the UI waiting for a slow server response
 axios.defaults.timeout = 10000; // 10 seconds
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<React.StrictMode><App /></React.StrictMode>);
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
+const root = ReactDOM.createRoot(document.getElementById('root'));
+const clientId = process.env.REACT_APP_GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
+
+root.render(
+  <React.StrictMode>
+    <GoogleOAuthProvider clientId={clientId}>
+      <App />
+    </GoogleOAuthProvider>
+  </React.StrictMode>
+);

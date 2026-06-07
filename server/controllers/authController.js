@@ -1,7 +1,9 @@
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const Registration = require('../models/Registration');
+const sendEmail = require('../utils/sendEmail');
 
 // Helper: generate JWT and set HTTP-only cookie
 const signTokenAndSetCookie = (user, sessionId, res) => {
@@ -229,5 +231,122 @@ exports.getMe = async (req, res) => {
   } catch (err) {
     console.error('getMe error:', err);
     res.status(500).json({ success: false, message: 'Server error fetching profile.' });
+  }
+};
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/**
+ * POST /api/auth/google
+ */
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, sub: googleId } = payload;
+    
+    let user = await User.findOne({ email: email.toLowerCase() });
+    const sessionId = crypto.randomUUID();
+    
+    if (!user) {
+      const confirmedReg = await Registration.findOne({
+        email: email.toLowerCase(),
+        status: 'confirmed',
+      }).select('_id').lean();
+      
+      user = new User({
+        name,
+        email,
+        googleId,
+        activeSessionId: sessionId,
+        access: !!confirmedReg,
+      });
+      await user.save();
+    } else {
+      user.activeSessionId = sessionId;
+      if (!user.googleId) {
+         user.googleId = googleId;
+      }
+      await user.save({ validateBeforeSave: false });
+    }
+    
+    signTokenAndSetCookie(user, sessionId, res);
+    const registrations = await Registration.find({ email: user.email.toLowerCase() }).select('-__v').lean();
+
+    res.json({
+      success: true,
+      message: 'Google login successful.',
+      user: { id: user._id, name: user.name, email: user.email, access: user.access, registrations },
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ success: false, message: 'Google authentication failed.' });
+  }
+};
+
+/**
+ * POST /api/auth/forgot-password
+ */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ success: false, message: 'There is no user with that email.' });
+    
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 mins
+    await user.save({ validateBeforeSave: false });
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+    const message = `You are receiving this email because you requested a password reset.\n\nPlease click on the following link, or paste it into your browser to complete the process:\n\n${resetUrl}`;
+    
+    try {
+      await sendEmail({ email: user.email, subject: 'Password Reset Token', html: `<p>${message.replace(/\n/g, '<br/>')}</p>` });
+      res.json({ success: true, message: 'Email sent' });
+    } catch (err) {
+      console.error('Email sending error:', err);
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpire = undefined;
+      await user.save({ validateBeforeSave: false });
+      return res.status(500).json({ success: false, message: 'Email could not be sent' });
+    }
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+/**
+ * POST /api/auth/reset-password/:token
+ */
+exports.resetPassword = async (req, res) => {
+  try {
+    const resetPasswordToken = crypto.createHash('sha256').update(req.params.token).digest('hex');
+    const user = await User.findOne({
+      resetPasswordToken,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+    
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    
+    if (req.body.password.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+    
+    res.json({ success: true, message: 'Password reset successfully. You can now log in with the new password.' });
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
