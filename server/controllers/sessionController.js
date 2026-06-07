@@ -19,3 +19,22 @@ exports.getSessionVideo = (req, res) => {
     videoUrl,
   });
 };
+
+/**
+ * GET /api/session/resources
+ * Protected by requireAuth + requirePaidAccess middleware.
+ * Downloads the bonus learning resources PDF.
+ */
+exports.getSessionResources = (req, res) => {
+  const path = require('path');
+  const pdfPath = path.join(__dirname, '../protected_files/Resources (1).pdf');
+  res.download(pdfPath, 'Resources.pdf', (err) => {
+    if (err) {
+      console.error('Error downloading PDF:', err);
+      // If headers are already sent, do not attempt to send error JSON
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: 'Could not download resources.' });
+      }
+    }
+  });
+};

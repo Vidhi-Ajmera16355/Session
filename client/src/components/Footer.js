@@ -78,8 +78,8 @@ export default function Footer() {
             Only serious learners · Workshop closes 29 June · 1-on-1 closes 25 June 2026
           </div>
           <div style={{ display: 'flex', gap: '16px', marginTop: '16px' }}>
-             <a href="https://linkedin.com" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>LinkedIn</a>
-             <a href="https://github.com" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>GitHub</a>
+             <a href="https://www.linkedin.com/in/vidhi-ajmera-501328257/" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>LinkedIn</a>
+             <a href="https://github.com/Vidhi-Ajmera16355" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>GitHub</a>
              <a href="https://twitter.com" target="_blank" rel="noreferrer" style={{color: 'var(--text-secondary)'}}>Twitter</a>
           </div>
         </div>

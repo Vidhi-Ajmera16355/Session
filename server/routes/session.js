@@ -13,4 +13,13 @@ router.get(
   sessionController.getSessionVideo
 );
 
+// GET /api/session/resources
+// Middleware chain: requireAuth → requirePaidAccess → controller
+router.get(
+  '/resources',
+  requireAuth,
+  requirePaidAccess,
+  sessionController.getSessionResources
+);
+
 module.exports = router;
