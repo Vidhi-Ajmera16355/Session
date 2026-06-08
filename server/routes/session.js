@@ -4,8 +4,15 @@ const requireAuth = require('../middleware/requireAuth');
 const requirePaidAccess = require('../middleware/requirePaidAccess');
 const sessionController = require('../controllers/sessionController');
 
+// validates the short-lived JWT passed as the `token` query parameter.
+router.get(
+  '/video/stream',
+  sessionController.streamSessionVideo
+);
+
 // GET /api/session/video
-// Middleware chain: requireAuth → requirePaidAccess → controller
+// ─────────────────────────────────────────────────────────────────────────────
+// Returns a signed stream URL. User must be logged in and have paid access.
 router.get(
   '/video',
   requireAuth,
@@ -14,7 +21,8 @@ router.get(
 );
 
 // GET /api/session/resources
-// Middleware chain: requireAuth → requirePaidAccess → controller
+// ─────────────────────────────────────────────────────────────────────────────
+// Sends the bonus PDF. User must be logged in and have paid access.
 router.get(
   '/resources',
   requireAuth,

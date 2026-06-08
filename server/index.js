@@ -1,58 +1,95 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const dns = require('dns');
-const compression = require('compression');
-const rateLimit = require('express-rate-limit');
-const cookieParser = require('cookie-parser');
-require('dotenv').config();
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const dns = require("dns");
+const compression = require("compression");
+const rateLimit = require("express-rate-limit");
+const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+require("dotenv").config();
 
 // Resolve MongoDB DNS SRV issue by using Google's DNS servers
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
+
+// ── Security Headers ──
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        frameSrc: [
+          "'self'",
+          "https://www.youtube-nocookie.com",
+          "https://www.youtube.com",
+        ],
+        connectSrc: [
+          "'self'",
+          "https://www.youtube.com",
+          "https://www.youtube-nocookie.com",
+        ],
+      },
+    },
+    // Prevent X-Frame-Options bypass
+    frameguard: { action: "deny" },
+    // Prevent MIME type sniffing
+    noSniff: true,
+    // Enable XSS protection
+    xssFilter: true,
+    // Referrer policy
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  }),
+);
 
 // Enable response compression for performance
 app.use(compression());
 
 // CORS — allow credentials (cookies) from local React dev server and deployed frontend
 const allowedOrigins = [
-  'http://localhost:3000',
-  'https://securejob-rho.vercel.app',
+  "http://localhost:3000",
+  "https://securejob-rho.vercel.app",
 ];
 if (process.env.CLIENT_URL) {
-  allowedOrigins.push(...process.env.CLIENT_URL.split(',').map(o => o.trim()));
+  allowedOrigins.push(
+    ...process.env.CLIENT_URL.split(",").map((o) => o.trim()),
+  );
 }
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+  }),
+);
 
-// Setup Socket.IO
+// Setup Socket.IO with security
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
     credentials: true,
-  }
+  },
 });
 
 // Make io accessible in routes
-app.set('io', io);
+app.set("io", io);
 
-io.on('connection', (socket) => {
-  console.log('Socket connected:', socket.id);
-  
-  socket.on('join_room', (room) => {
+io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+
+  socket.on("join_room", (room) => {
     socket.join(room);
   });
-  
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected:', socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("Socket disconnected:", socket.id);
   });
 });
 
@@ -66,29 +103,35 @@ const apiLimiter = rateLimit({
   max: 150, // Limit each IP to 150 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, message: 'Too many requests from this IP, please try again later.' }
+  message: {
+    success: false,
+    message: "Too many requests from this IP, please try again later.",
+  },
 });
-app.use('/api', apiLimiter);
+app.use("/api", apiLimiter);
 
 // Routes
-app.use('/api', require('./routes/registration'));
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/session', require('./routes/session'));
-app.use('/api/admin', require('./routes/admin'));
+app.use("/api", require("./routes/registration"));
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/session", require("./routes/session"));
+app.use("/api/admin", require("./routes/admin"));
 
 // Health check
-app.get('/', (req, res) => res.json({ status: 'Server is running ✓' }));
+app.get("/", (req, res) => res.json({ status: "Server is running ✓" }));
 
 // Connect to MongoDB then start server
-mongoose.connect(process.env.MONGODB_URI, {
-  maxPoolSize: 100, // Handle high concurrency
-  minPoolSize: 10,  // Keep a baseline of connections ready
-})
-  .then(() => {
-    console.log('✓ MongoDB connected');
-    server.listen(PORT, () => console.log(`✓ Server running on http://localhost:${PORT}`));
+mongoose
+  .connect(process.env.MONGODB_URI, {
+    maxPoolSize: 100, // Handle high concurrency
+    minPoolSize: 10, // Keep a baseline of connections ready
   })
-  .catch(err => {
-    console.error('MongoDB connection error:', err);
+  .then(() => {
+    console.log("✓ MongoDB connected");
+    server.listen(PORT, () =>
+      console.log(`✓ Server running on http://localhost:${PORT}`),
+    );
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
     process.exit(1);
   });
