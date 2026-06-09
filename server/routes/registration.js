@@ -90,26 +90,21 @@ router.post('/create-order', registrationLimiter, async (req, res) => {
 // POST /api/verify-payment - verify Cashfree payment status
 router.post('/verify-payment', registrationLimiter, async (req, res) => {
   try {
-    const { orderId, formData, devBypass } = req.body;
-    let orderData = {};
+    const { orderId, formData } = req.body;
     
     if (!orderId) {
       return res.status(400).json({ success: false, message: 'Order ID is required.' });
     }
 
-    if (devBypass && formData?.name === 'DEV_TEST') {
-      // Skip Cashfree verification for developer testing
-      orderData = { payment_session_id: 'dev_test_session' };
-    } else {
-      // Verify payment status with Cashfree
-      const response = await axios.get(`${CASHFREE_BASE_URL}/orders/${orderId}`, {
-        headers: getCashfreeHeaders()
-      });
-      orderData = response.data;
+    // Verify payment status with Cashfree
+    const response = await axios.get(`${CASHFREE_BASE_URL}/orders/${orderId}`, {
+      headers: getCashfreeHeaders()
+    });
 
-      if (orderData.order_status !== 'PAID') {
-        return res.status(400).json({ success: false, message: 'Payment not successful or pending.' });
-      }
+    const orderData = response.data;
+
+    if (orderData.order_status !== 'PAID') {
+      return res.status(400).json({ success: false, message: 'Payment not successful or pending.' });
     }
 
     const { name, phone, email, college, plan, goal } = formData;

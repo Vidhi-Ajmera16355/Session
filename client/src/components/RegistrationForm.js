@@ -87,29 +87,6 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
 
       const { orderId, paymentSessionId } = orderRes.data;
 
-      // Developer Bypass: Skip Cashfree modal if name is DEV_TEST
-      if (form.name === "DEV_TEST") {
-        try {
-          const verifyRes = await axios.post("/api/verify-payment", {
-            orderId: orderId,
-            formData: { ...form, plan: selectedPlan },
-            devBypass: true
-          });
-          if (verifyRes.data.success) {
-            setStep(3);
-          } else {
-            setError(verifyRes.data.message || "Payment verification failed");
-            setStep(1);
-          }
-        } catch (err) {
-          setError(err.response?.data?.message || "Error verifying DEV_TEST payment.");
-          setStep(1);
-        } finally {
-          setLoading(false);
-        }
-        return;
-      }
-
       // 2. Initialize Cashfree SDK
       const cashfree = await load({ mode: "production" });
 
