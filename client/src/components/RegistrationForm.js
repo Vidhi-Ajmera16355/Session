@@ -93,6 +93,7 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
       // 3. Open Cashfree Checkout Modal
       cashfree.checkout({
         paymentSessionId: paymentSessionId,
+        redirectTarget: "_modal"
       }).then(async (result) => {
         if (result.error) {
            setError(result.error.message || "Payment failed or cancelled.");

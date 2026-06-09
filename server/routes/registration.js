@@ -124,6 +124,7 @@ router.post('/verify-payment', registrationLimiter, async (req, res) => {
       name, phone, email, college, plan, amount, 
       cashfreeOrderId: orderId,
       cashfreePaymentSessionId: orderData.payment_session_id || '',
+      transactionId: orderId, // Populate transactionId for Admin panel
       paymentMethod: 'cashfree',
       status: 'confirmed',
       goal 
