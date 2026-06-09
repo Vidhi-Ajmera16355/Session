@@ -143,6 +143,17 @@ export default function Hero({ onCTA }) {
             >
               Book 1-on-1 Call — ₹159
             </button>
+            <a 
+              href="https://www.linkedin.com/posts/vidhi-ajmera-501328257_collegestudents-careergrowth-internships-ugcPost-7469748611132817408-qHmL/?utm_source=social_share_send&utm_medium=android_app&rcm=ACoAAD867tEBrUHaAuLtq2MXT1AN1oiYox_JxjY&utm_campaign=copy_link"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{...s.btnSecondary, display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none'}} 
+              className="glow-hover"
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'var(--bg-secondary)'}
+            >
+              ▶ Watch Demo
+            </a>
           </div>
           <div style={{ ...s.deadline, justifyContent: 'flex-start' }} className="fade-up-4">
             <div style={s.dlItem}>

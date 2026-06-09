@@ -171,15 +171,27 @@ export default function Pricing({ onSelect }) {
                 ✓ Already Purchased
               </button>
             ) : (
-              <button 
-                style={{ ...s.btn, ...s.btnPrimary, position: 'relative', overflow: 'hidden' }} 
-                onClick={() => onSelect('workshop')}
-                onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
-              >
-                <div style={{position: 'absolute', top: 0, left: '-100%', width: '100%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', animation: 'shimmer 2s infinite'}}></div>
-                Register for ₹59 →
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <button 
+                  style={{ ...s.btn, ...s.btnPrimary, position: 'relative', overflow: 'hidden' }} 
+                  onClick={() => onSelect('workshop')}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--primary-hover)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'var(--primary)'}
+                >
+                  <div style={{position: 'absolute', top: 0, left: '-100%', width: '100%', height: '100%', background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)', animation: 'shimmer 2s infinite'}}></div>
+                  Register for ₹59 →
+                </button>
+                <a 
+                  href="https://www.linkedin.com/posts/vidhi-ajmera-501328257_collegestudents-careergrowth-internships-ugcPost-7469748611132817408-qHmL/?utm_source=social_share_send&utm_medium=android_app&rcm=ACoAAD867tEBrUHaAuLtq2MXT1AN1oiYox_JxjY&utm_campaign=copy_link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ ...s.btn, ...s.btnOutline, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-tertiary)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                >
+                  ▶ Watch Demo Video
+                </a>
+              </div>
             )}
           </div>
 
