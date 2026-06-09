@@ -4,6 +4,7 @@ import axios from "axios";
 import io from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 import ScrollAnimation from "./ScrollAnimation";
+import { load } from "@cashfreepayments/cashfree-js";
 
 export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
   const navigate = useNavigate();
@@ -70,111 +71,65 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
     setStep(2);
   };
 
-  const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
-      if (window.Razorpay) {
-        resolve(true);
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => {
-        resolve(true);
-      };
-      script.onerror = () => {
-        resolve(false);
-      };
-      document.body.appendChild(script);
-    });
-  };
-
   const handlePayment = async () => {
     setError("");
     setLoading(true);
-
-    const res = await loadRazorpayScript();
-    if (!res) {
-      setError("Razorpay SDK failed to load. Are you online?");
-      setLoading(false);
-      return;
-    }
 
     try {
       // 1. Create order on backend
       const orderRes = await axios.post("/api/create-order", {
         plan: selectedPlan,
+        formData: form
       });
       if (!orderRes.data.success) {
         throw new Error(orderRes.data.message || "Failed to create order");
       }
 
-      const { orderId, amount: rpAmount, keyId } = orderRes.data;
+      const { orderId, paymentSessionId } = orderRes.data;
 
-      // 2. Open Razorpay modal
-      const options = {
-        key: keyId,
-        amount: rpAmount,
-        currency: "INR",
-        name: "Internship Playbook",
-        description:
-          selectedPlan === "workshop"
-            ? "Group Workshop Registration"
-            : "1-on-1 Call Registration",
-        order_id: orderId,
-        handler: async function (response) {
-          try {
-            setLoading(true);
-            // 3. Verify payment on backend
-            const verifyRes = await axios.post("/api/verify-payment", {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-              formData: { ...form, plan: selectedPlan },
-            });
+      // 2. Initialize Cashfree SDK
+      const cashfree = await load({ mode: "production" });
 
-            if (verifyRes.data.success) {
-              setStep(3); // Move to Success step
-            } else {
-              setError(verifyRes.data.message || "Payment verification failed");
-              setStep(1);
-            }
-          } catch (err) {
-            setError(
-              err.response?.data?.message ||
-                "Error verifying payment. If amount was deducted, please contact support.",
-            );
-            setStep(1);
-          } finally {
-            setLoading(false);
-          }
-        },
-        prefill: {
-          name: form.name,
-          email: form.email,
-          contact: form.phone,
-        },
-        readonly: {
-          email: true,
-          contact: true,
-          name: true,
-        },
-        theme: {
-          color: "#6366f1",
-        },
-        modal: {
-          ondismiss: function () {
-            setLoading(false);
-          },
-        },
-      };
+      // 3. Open Cashfree Checkout Modal
+      cashfree.checkout({
+        paymentSessionId: paymentSessionId,
+      }).then(async (result) => {
+        if (result.error) {
+           setError(result.error.message || "Payment failed or cancelled.");
+           setStep(1);
+           setLoading(false);
+        }
+        if (result.paymentDetails) {
+           // Payment is successful, verify on backend
+           try {
+             setLoading(true);
+             const verifyRes = await axios.post("/api/verify-payment", {
+               orderId: orderId,
+               formData: { ...form, plan: selectedPlan },
+             });
 
-      const paymentObject = new window.Razorpay(options);
-      paymentObject.open();
+             if (verifyRes.data.success) {
+               setStep(3); // Move to Success step
+             } else {
+               setError(verifyRes.data.message || "Payment verification failed");
+               setStep(1);
+             }
+           } catch (err) {
+             setError(
+               err.response?.data?.message ||
+                 "Error verifying payment. If amount was deducted, please contact support."
+             );
+             setStep(1);
+           } finally {
+             setLoading(false);
+           }
+        }
+      });
     } catch (err) {
       setError(
         err.response?.data?.message ||
           err.message ||
-          "Something went wrong. Please try again.",
+          "Something went wrong. Please try again."
       );
       setLoading(false);
     }
@@ -564,30 +519,17 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
                   </div>
                 </div>
 
-                {/* Razorpay Maintenance Notice */}
+                {/* Payment Checkout Options */}
                 <div
                   style={{
-                    background: "rgba(251, 146, 60, 0.1)",
-                    border: "1px solid rgb(251, 146, 60)",
+                    background: "rgba(99, 102, 241, 0.05)",
+                    border: "1px solid var(--primary)",
                     padding: "24px",
                     borderRadius: "var(--radius-md)",
                     marginBottom: 32,
-                    textAlign: "left",
+                    textAlign: "center",
                   }}
                 >
-                  <div
-                    style={{
-                      fontSize: 16,
-                      fontWeight: 800,
-                      color: "rgb(251, 146, 60)",
-                      marginBottom: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <span>⚙️</span> Razorpay Under Maintenance
-                  </div>
                   <p
                     style={{
                       color: "var(--text-secondary)",
@@ -595,118 +537,16 @@ export default function RegistrationForm({ selectedPlan, setSelectedPlan }) {
                       lineHeight: 1.6,
                     }}
                   >
-                    Our online payment system is currently under maintenance. No
-                    worries! You can complete your payment through any of the
-                    following methods:
+                    Click below to pay securely via Cashfree Payments. You can use UPI, Credit/Debit Cards, Netbanking, or Wallets.
                   </p>
-
-                  <div
-                    style={{
-                      background: "var(--bg-primary)",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      marginBottom: 16,
-                      border: "1px solid var(--border)",
-                    }}
+                  <button
+                    onClick={handlePayment}
+                    style={{ ...s.submitBtn, marginTop: 0 }}
+                    disabled={loading}
+                    className="glow-hover"
                   >
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "var(--text-primary)",
-                        marginBottom: 8,
-                      }}
-                    >
-                      📱 Direct Payment Option
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: "var(--text-secondary)",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Send payment to:{" "}
-                      <strong style={{ color: "var(--primary)", fontSize: 15 }}>
-                        7668903828
-                      </strong>{" "}
-                      (UPI/Bank Transfer)
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--text-muted)",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      After making the payment, send a screenshot of the
-                      transaction
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: "var(--bg-primary)",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      marginBottom: 16,
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "var(--text-primary)",
-                        marginBottom: 8,
-                      }}
-                    >
-                      💬 Share Screenshot on WhatsApp
-                    </div>
-                    <div
-                      style={{ fontSize: 14, color: "var(--text-secondary)" }}
-                    >
-                      Send your payment screenshot via WhatsApp to the above
-                      number or directly to our team
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: "var(--bg-primary)",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      marginBottom: 16,
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontSize: 13,
-                        fontWeight: 700,
-                        color: "var(--text-primary)",
-                        marginBottom: 8,
-                      }}
-                    >
-                      📧 Alternative: Email Method
-                    </div>
-                    <div
-                      style={{
-                        fontSize: 14,
-                        color: "var(--text-secondary)",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Send your transaction details and screenshot to:{" "}
-                      <strong style={{ color: "var(--primary)" }}>
-                        vidhi2005ajmera@gmail.com
-                      </strong>
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      You will receive a confirmation email shortly after
-                      verification
-                    </div>
-                  </div>
+                    {loading ? "Processing..." : `Pay ₹${amount} Securely`}
+                  </button>
                 </div>
 
                 {error && <div style={s.errorMsg}>⚠ {error}</div>}

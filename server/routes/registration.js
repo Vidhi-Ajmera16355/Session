@@ -4,15 +4,20 @@ const Registration = require('../models/Registration');
 const nodemailer = require('nodemailer');
 const rateLimit = require('express-rate-limit');
 const crypto = require('crypto');
-const Razorpay = require('razorpay');
+const axios = require('axios');
 
-let razorpayInstance = null;
-if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
-  razorpayInstance = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-  });
-}
+// Cashfree Configuration
+const CASHFREE_BASE_URL = process.env.CASHFREE_ENVIRONMENT === 'PRODUCTION' 
+  ? 'https://api.cashfree.com/pg' 
+  : 'https://sandbox.cashfree.com/pg';
+
+const getCashfreeHeaders = () => ({
+  'x-client-id': process.env.CASHFREE_APP_ID,
+  'x-client-secret': process.env.CASHFREE_SECRET_KEY,
+  'x-api-version': '2023-08-01',
+  'Content-Type': 'application/json'
+});
+
 // Strict rate limiter for registration attempts (max 5 per hour per IP)
 const registrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour window
@@ -35,46 +40,71 @@ if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
   }
 }
 
-// POST /api/create-order - create Razorpay order
+// POST /api/create-order - create Cashfree order
 router.post('/create-order', registrationLimiter, async (req, res) => {
   try {
-    const { plan } = req.body;
+    const { plan, formData } = req.body;
     if (!['workshop', 'oneonone'].includes(plan)) {
        return res.status(400).json({ success: false, message: 'Invalid plan.' });
     }
     const amount = plan === 'workshop' ? 59 : 159;
     
-    if (!razorpayInstance) {
-       return res.status(500).json({ success: false, message: 'Razorpay is not configured on the server.' });
+    if (!process.env.CASHFREE_APP_ID || !process.env.CASHFREE_SECRET_KEY) {
+       return res.status(500).json({ success: false, message: 'Cashfree is not configured on the server.' });
     }
 
-    const options = {
-      amount: amount * 100, // paise
-      currency: "INR",
-      receipt: `rcpt_${Date.now()}`
+    const orderId = `order_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+    const payload = {
+      order_amount: amount,
+      order_currency: "INR",
+      order_id: orderId,
+      customer_details: {
+        customer_id: `cust_${Date.now()}`,
+        customer_name: formData?.name || "Customer",
+        customer_email: formData?.email || "customer@example.com",
+        customer_phone: formData?.phone || "9999999999"
+      },
+      order_meta: {
+        // Return URL for redirect flow if needed, though we primarily use modal
+        return_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/register?order_id={order_id}`
+      }
     };
 
-    const order = await razorpayInstance.orders.create(options);
-    res.json({ success: true, orderId: order.id, amount: order.amount, keyId: process.env.RAZORPAY_KEY_ID });
+    const response = await axios.post(`${CASHFREE_BASE_URL}/orders`, payload, {
+      headers: getCashfreeHeaders()
+    });
+
+    res.json({ 
+      success: true, 
+      orderId: response.data.order_id, 
+      paymentSessionId: response.data.payment_session_id,
+      amount: amount
+    });
   } catch (err) {
-    console.error('Create order error:', err);
+    console.error('Create order error:', err.response?.data || err.message);
     res.status(500).json({ success: false, message: 'Server error while creating order.' });
   }
 });
 
-// POST /api/verify-payment - verify Razorpay signature and save registration
+// POST /api/verify-payment - verify Cashfree payment status
 router.post('/verify-payment', registrationLimiter, async (req, res) => {
   try {
-    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, formData } = req.body;
+    const { orderId, formData } = req.body;
     
-    // Verify signature
-    const body = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSignature = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-                                    .update(body.toString())
-                                    .digest('hex');
+    if (!orderId) {
+      return res.status(400).json({ success: false, message: 'Order ID is required.' });
+    }
 
-    if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: 'Invalid payment signature.' });
+    // Verify payment status with Cashfree
+    const response = await axios.get(`${CASHFREE_BASE_URL}/orders/${orderId}`, {
+      headers: getCashfreeHeaders()
+    });
+
+    const orderData = response.data;
+
+    if (orderData.order_status !== 'PAID') {
+      return res.status(400).json({ success: false, message: 'Payment not successful or pending.' });
     }
 
     const { name, phone, email, college, plan, goal } = formData;
@@ -84,7 +114,7 @@ router.post('/verify-payment', registrationLimiter, async (req, res) => {
 
     const amount = plan === 'workshop' ? 59 : 159;
 
-    const existing = await Registration.findOne({ razorpayPaymentId: razorpay_payment_id });
+    const existing = await Registration.findOne({ cashfreeOrderId: orderId });
     if (existing) {
       return res.status(409).json({ success: false, message: 'This payment has already been processed.' });
     }
@@ -92,9 +122,9 @@ router.post('/verify-payment', registrationLimiter, async (req, res) => {
     // Auto-confirm since payment was successful
     const registration = new Registration({ 
       name, phone, email, college, plan, amount, 
-      razorpayOrderId: razorpay_order_id,
-      razorpayPaymentId: razorpay_payment_id,
-      paymentMethod: 'razorpay',
+      cashfreeOrderId: orderId,
+      cashfreePaymentSessionId: orderData.payment_session_id || '',
+      paymentMethod: 'cashfree',
       status: 'confirmed',
       goal 
     });
@@ -114,7 +144,7 @@ router.post('/verify-payment', registrationLimiter, async (req, res) => {
         name, 
         plan, 
         amount, 
-        paymentId: razorpay_payment_id 
+        paymentId: orderId 
       });
     }
 
@@ -137,7 +167,7 @@ router.post('/verify-payment', registrationLimiter, async (req, res) => {
             <table style="width:100%;font-size:14px;color:#334155;border-collapse:collapse;">
               <tr><td style="padding:6px 0;color:#64748b;">Plan</td><td style="padding:6px 0;text-align:right;font-weight:600;">${planLabel}</td></tr>
               <tr><td style="padding:6px 0;color:#64748b;">Amount</td><td style="padding:6px 0;text-align:right;font-weight:600;">₹${amount}</td></tr>
-              <tr><td style="padding:6px 0;color:#64748b;">Payment ID</td><td style="padding:6px 0;text-align:right;font-weight:600;font-family:monospace;">${razorpay_payment_id}</td></tr>
+              <tr><td style="padding:6px 0;color:#64748b;">Order ID</td><td style="padding:6px 0;text-align:right;font-weight:600;font-family:monospace;">${orderId}</td></tr>
               <tr><td style="padding:6px 0;color:#64748b;">College</td><td style="padding:6px 0;text-align:right;font-weight:600;">${college}</td></tr>
             </table>
           </div>
@@ -163,15 +193,15 @@ router.post('/verify-payment', registrationLimiter, async (req, res) => {
       transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: process.env.NOTIFY_EMAIL,
-        subject: `New Razorpay Payment: ${name} (${plan})`,
-        text: `Name: ${name}\nEmail: ${email}\nCollege: ${college}\nPlan: ${plan}\nAmount: ₹${amount}\nPayment ID: ${razorpay_payment_id}\nGoal: ${goal}`
+        subject: `New Payment (Cashfree): ${name} (${plan})`,
+        text: `Name: ${name}\nEmail: ${email}\nCollege: ${college}\nPlan: ${plan}\nAmount: ₹${amount}\nOrder ID: ${orderId}\nGoal: ${goal}`
       }).catch(err => console.error('Admin email error:', err.message));
     }
 
     res.status(201).json({ success: true, message: 'Payment verified and registration successful!', id: registration._id });
   } catch (err) {
-    console.error('Verify payment error:', err);
-    res.status(500).json({ success: false, message: 'Server error. Please try again.' });
+    console.error('Verify payment error:', err.response?.data || err.message);
+    res.status(500).json({ success: false, message: 'Server error verifying payment. Please try again.' });
   }
 });
 
